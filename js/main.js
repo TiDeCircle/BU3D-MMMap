@@ -1908,6 +1908,12 @@ const builders = {
         accentBands(group, b, w, d, h, 0, x, z);
       }
       if (part.solar) addSolar(group, x, z, w, d, h + (part.curtain ? 1.45 : 1.05));
+      if (part.stripe) {
+        // yellow maintenance walkway along the middle of the solar field
+        const s = new THREE.Mesh(new THREE.PlaneGeometry(w * 0.82, 0.9).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: '#e7b52c', roughness: 0.6 }));
+        s.position.set(x, h + 1.12, z);
+        group.add(s);
+      }
     }
   },
   dorm(group, b) {

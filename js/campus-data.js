@@ -232,6 +232,9 @@ export const PROPS = [
 
   // ── โซน C ──
   // ลานวงกลมจมระดับ (amphi) ล้อมด้วยทางเดินมีหลังคาโค้ง และขั้นสนามหญ้าโค้งไปทางตะวันตกเฉียงใต้
+  // ทางเดินมีหลังคาเลียบด้านใต้ของ C3
+
+  { kind: 'canopy', x1: 543, z1: -87, x2: 598, z2: -87, w: 4, h: 4 },
   { kind: 'amphi', x: 519, z: -109, r: 21, arcadeFrom: 1.9, arcadeLen: 4.2, lawnArcs: [30, 38, 46], arcFrom: -0.2, arcLen: 1.9 },
   // แนวบริการริมรั้วด้านเหนือ: สถานีไฟฟ้าย่อย และโรงหลังคาแดง
   { kind: 'substation', x: 504, z: 8, w: 56, d: 28 },
@@ -477,19 +480,21 @@ export const BUILDINGS = [
   // กลุ่มอาคาร C2 (คณะนิเทศศาสตร์) ตาม ref/satellite-zone-c.webp และภาพโดรน
   { num: 31, id: 'C2', zone: 'C', label: 'C2 นิเทศศาสตร์', category: 'academic', shape: 'slabtower',
     nameTh: 'อาคาร C2 (คณะนิเทศศาสตร์)', nameEn: 'Building C2 (School of Communication Arts)',
-    x: 451, z: -55, w: 36, d: 34, h: 42, color: '#a9adb0',
+    x: 488, z: -72, w: 36, d: 34, h: 42, color: '#a9adb0',
     also: ['คณะนิเทศศาสตร์ (School of Communication Arts)', 'ลานวงกลมกลางกลุ่มอาคาร C2'],
     desc: 'หอคอยสูงราว 10 ชั้นของคณะนิเทศศาสตร์ ผนังแผ่นโลหะสีเทาลายเส้นนอน ด้านใต้มีแนวกระจกสีเขียวน้ำทะเลตลอดความสูง หลังคาติดแผงโซลาร์และเสาอากาศโครงเหล็ก ทางตะวันตกเฉียงใต้เป็นลานวงกลมจมระดับ ล้อมด้วยทางเดินมีหลังคาโค้ง' },
-  { num: 30, id: 'C1', zone: 'C', category: 'academic', shape: 'composite',
-    nameTh: 'อาคาร C1', nameEn: 'Building C1',
-    x: 559, z: -63.6, w: 104, d: 40, h: 14, color: '#d9dcdf', glassColor: '#9cbfc6',
-    parts: [{ box: [-10.5, 0, 83, 38, 14], solar: true }, { glass: [41.5, -0.4, 21, 36, 11] }],
-    desc: 'อาคารยาวหลังคาโซลาร์ทางทิศเหนือของลานวงกลม ปลายด้านตะวันตกเป็นโถงหลังคากระจก (ตำแหน่งและรหัสอาคารยังไม่ยืนยัน)' },
+  // C3 (เหนือลานวงกลม) และ C1 (ใต้ลานวงกลม) ต่อกับทางเดินวงแหวนของลานวงกลม ตามป้ายใน virtual tour
   { num: 32, id: 'C3', zone: 'C', category: 'academic', shape: 'composite',
-    nameTh: 'อาคาร C3 (คณะนิเทศศาสตร์)', nameEn: 'Building C3 (Faculty of Communication Arts)',
-    x: 497, z: -141.5, w: 70, d: 27, h: 14, color: '#c9cdd1',
-    parts: [{ box: [0, 0, 70, 27, 14], solar: true }],
-    desc: 'อาคารคณะนิเทศศาสตร์ทางทิศใต้ของลานวงกลม หลังคาติดแผงโซลาร์ (รหัสอาคารยังไม่ยืนยัน)' },
+    nameTh: 'อาคาร C3', nameEn: 'Building C3',
+    x: 559, z: -63.6, w: 104, d: 40, h: 14, color: '#d9dcdf', glassColor: '#9cbfc6',
+    parts: [{ box: [-10.5, 0, 83, 38, 14], solar: true, stripe: true }, { glass: [41.5, -0.4, 21, 36, 11] }],
+    desc: 'อาคารยาวหลังคาโซลาร์คาดแถบเหลือง ทางทิศเหนือของลานวงกลม ปลายด้านตะวันออกต่อกับทางเดินวงแหวน ด้านใต้มีทางเดินมีหลังคาสีขาว ปลายด้านตะวันตกเป็นโถงผนังกระจก' },
+  { num: 30, id: 'C1', zone: 'C', category: 'academic', shape: 'composite',
+    nameTh: 'อาคาร C1 (คณะนิเทศศาสตร์)', nameEn: 'Building C1 (Faculty of Communication Arts)',
+    x: 497, z: -143, w: 70, d: 27, h: 14, color: '#c9cdd1',
+    also: ['คณะนิเทศศาสตร์ (Faculty of Communication Arts)'],
+    parts: [{ box: [0, 0, 70, 27, 14], solar: true, stripe: true }],
+    desc: 'อาคารหลังคาโซลาร์คาดแถบเหลือง ทางทิศใต้ของลานวงกลม ปลายด้านเหนือต่อกับทางเดินวงแหวน' },
   { num: 33, id: 'C4', zone: 'C', label: 'C4 (CDA)', category: 'academic', shape: 'composite',
     nameTh: 'อาคาร C4 (คณะดิจิทัลมีเดียและศิลปะภาพยนตร์)', nameEn: 'Building C4 (Faculty of Digital Media and Cinematic Arts)',
     x: 667, z: -45, w: 100, d: 56, h: 14, color: '#cfd3d6',

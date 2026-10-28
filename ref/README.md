@@ -49,6 +49,8 @@
 | `drone-zone-c-looking-west.webp` | virtual tour ภาพโดรนมองไปทางทิศตะวันตก | ภาพรวมกลุ่ม C2 ลานวงกลม สนามหญ้า ลานจอดหลังคาโซลาร์ |
 | `drone-c2-courtyard.webp` | virtual tour ภาพโดรน | ลานวงกลมจมระดับ ทางเดินมีหลังคาโค้ง ขั้นสนามหญ้าโค้ง อาคารหลังคาโซลาร์ |
 | `drone-solar-parking-field.webp` | virtual tour ภาพโดรน | ลานจอดหลังคาโซลาร์ 5 แถว สระน้ำ สนามฟุตบอล สนามบาส |
+| `tour-c1-label.webp`, `tour-c2-label.webp`, `tour-c3-label.webp` | virtual tour ภาพโดรนที่ชี้อาคาร | **ยืนยันรหัส**: C3 อยู่เหนือลานวงกลม, C1 อยู่ใต้ลานวงกลม, C2 คือหอคอย ทั้งสามต่อกัน |
+| `drone-c1-c3-courtyard.webp`, `drone-c2-group-looking-west.webp` | virtual tour ภาพโดรน | ทางเดินวงแหวนเชื่อม C1 C2 C3 แถบเหลืองบนหลังคาโซลาร์ |
 
 ## ภาพที่ใช้แล้วแต่ยังไม่ได้อยู่ในโฟลเดอร์นี้
 
