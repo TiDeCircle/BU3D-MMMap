@@ -118,7 +118,7 @@ export const PLAZAS = [
   { kind: 'lawn', x: -657, z: -98, w: 86, d: 148 },
   { kind: 'lawn', x: -287, z: -212, w: 100, d: 12 },
   // ลานปูอิฐหน้าอาคาร B1
-  { kind: 'pavers', x: -82, z: -67, w: 46, d: 10 },
+  { kind: 'pavers', x: -82, z: -74, w: 46, d: 8 },
 ];
 
 // แหล่งน้ำ: pond = วงรี, canal = สี่เหลี่ยม, pool = รูปหลายเหลี่ยม, island = เกาะกลางน้ำ
@@ -314,17 +314,17 @@ export const BUILDINGS = [
   // B1 ตาม Street View (ก.พ. 2022) หน้าอาคารหันทิศเหนือออกถนนสายกลาง
   { num: 19, id: 'B1', zone: 'B', category: 'academic', shape: 'tiered',
     nameTh: 'อาคาร B1', nameEn: 'Building B1',
-    x: -82, z: -98, w: 50, d: 52, h: 18, color: '#b8bdc4', armR: 10,
+    x: -82, z: -102, w: 50, d: 46, h: 18, color: '#b8bdc4', armR: 9,
     desc: 'อาคารสีเทาขนาดใหญ่ถัดจากสนามฟุตซอลไปทางตะวันตก หน้าอาคารหันทิศเหนือออกถนนสายกลาง หอกลางสูง 4 ชั้นมีซุ้มโค้งและระเบียงลูกกรง ปีกสองข้างมีชายคายื่นซ้อนทุกชั้น หน้าทางเข้าเป็นมุขบนเสาสี่เหลี่ยม มีแนวเสาและคานสีขาวโค้งโอบลานปูอิฐด้านหน้า หลังคาติดแผงโซลาร์' },
   { num: 20, id: 'B2', zone: 'B', category: 'academic', shape: 'composite',
     nameTh: 'อาคาร B2', nameEn: 'Building B2',
-    x: -92, z: -166, w: 40, d: 34, h: 14, color: '#e9eaeb',
+    x: -82, z: -147, w: 40, d: 34, h: 14, color: '#e9eaeb',
     parts: [{ box: [0, 3, 40, 28, 14], solar: true }, { box: [0, -14, 34, 6, 10] }],
-    desc: 'อาคารเรียนทางทิศใต้ของอาคาร B1 หลังคาติดแผงโซลาร์' },
+    desc: 'อาคารเรียนติดด้านทิศใต้ของอาคาร B1 หลังคาติดแผงโซลาร์' },
   { num: 21, id: 'B3', zone: 'B', roof: '#7d838b', category: 'academic', shape: 'gable', ridge: 'z',
     nameTh: 'อาคาร B3', nameEn: 'Building B3',
-    x: -8, z: -132, w: 22, d: 54, h: 14, color: '#f2f3f3',
-    desc: 'อาคารยาวสีขาวหลังคาเทา ทางทิศตะวันตกของอาคาร B1 และ B2' },
+    x: -40, z: -140, w: 22, d: 54, h: 14, color: '#f2f3f3',
+    desc: 'อาคารยาวสีขาวหลังคาเทา ติดด้านทิศตะวันตกของอาคาร B1 และ B2' },
   { num: 22, id: 'B4', zone: 'B', category: 'academic', shape: 'composite',
     nameTh: 'อาคาร B4', nameEn: 'Building B4',
     x: -5, z: -26, w: 40, d: 30, h: 20, color: '#f2f2f0', accent: '#b8343a',
