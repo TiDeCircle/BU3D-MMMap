@@ -746,6 +746,72 @@ function thaiFlagTexture() {
         m.receiveShadow = true;
         world.add(m);
       }
+    } else if (p.kind === 'parksign') {
+      // angular white wedge with the name on its north face
+      const shape = new THREE.Shape([new THREE.Vector2(-p.w / 2, 0), new THREE.Vector2(p.w / 2, 0),
+        new THREE.Vector2(p.w / 2 - 1, p.h), new THREE.Vector2(-p.w / 2 + 0.6, p.h * 0.9)]);
+      const g = new THREE.ExtrudeGeometry(shape, { depth: 1.6, bevelEnabled: false });
+      g.translate(0, 0, -0.8);
+      piece(g, new THREE.MeshStandardMaterial({ color: '#e6e8ea', roughness: 0.5, flatShading: true }), p.x, 0, p.z);
+      const [sc, sx] = canvas(512, 160);
+      sx.fillStyle = '#7a5418';
+      sx.font = '700 34px "Chakra Petch", sans-serif'; sx.fillText(p.line1, 30, 56);
+      sx.font = '700 78px "Chakra Petch", sans-serif'; sx.fillText(p.line2, 24, 136, 470);
+      const label = new THREE.Mesh(new THREE.PlaneGeometry(p.w * 0.8, p.h * 0.55),
+        new THREE.MeshStandardMaterial({ map: toTexture(sc), transparent: true }));
+      label.position.set(p.x - 0.3, p.h * 0.42, p.z + 0.82);
+      world.add(label);
+    } else if (p.kind === 'hoarding') {
+      const len = Math.hypot(p.x2 - p.x1, p.z2 - p.z1);
+      const [hc, hx] = canvas(1024, 64);
+      hx.fillStyle = '#f2c230'; hx.fillRect(0, 0, 1024, 64);
+      hx.fillStyle = '#e07f2a';
+      for (let i = 0; i < 1024; i += 160) { hx.beginPath(); hx.arc(i + 60, 40, 18, 0, Math.PI * 2); hx.fill(); }
+      hx.fillStyle = '#5a3a12'; hx.font = '700 30px "Chakra Petch", sans-serif';
+      hx.fillText(p.text, 380, 42);
+      const wall = piece(new THREE.BoxGeometry(len, p.h, 0.2), [0, 0, 0, 0, 0, 0].map(() =>
+        new THREE.MeshStandardMaterial({ map: toTexture(hc), roughness: 0.7 })),
+        (p.x1 + p.x2) / 2, p.h / 2, (p.z1 + p.z2) / 2, -Math.atan2(p.z2 - p.z1, p.x2 - p.x1));
+      wall.castShadow = true;
+    } else if (p.kind === 'stream') {
+      for (let i = 1; i < p.pts.length; i++) {
+        const [x1, z1] = p.pts[i - 1], [x2, z2] = p.pts[i];
+        const len = Math.hypot(x2 - x1, z2 - z1);
+        const seg = new THREE.Mesh(new THREE.PlaneGeometry(len + p.w, p.w).rotateX(-Math.PI / 2), waterMat);
+        seg.position.set((x1 + x2) / 2, 0.27, (z1 + z2) / 2);
+        seg.rotation.y = -Math.atan2(z2 - z1, x2 - x1);
+        world.add(seg);
+      }
+    } else if (p.kind === 'stepping' || p.kind === 'bollards') {
+      const stone = new THREE.MeshStandardMaterial({ color: '#e3ded4', roughness: 0.9 });
+      const post = nightAware(new THREE.MeshStandardMaterial({ color: '#2a2c30', emissive: '#ffd9a0', emissiveIntensity: 0 }), 'emissiveIntensity', 0, 1.2);
+      for (let i = 1; i < p.pts.length; i++) {
+        const [x1, z1] = p.pts[i - 1], [x2, z2] = p.pts[i];
+        const len = Math.hypot(x2 - x1, z2 - z1);
+        const ry = -Math.atan2(z2 - z1, x2 - x1);
+        for (let s = 0; s < len; s += p.step) {
+          const t = s / len, x = x1 + (x2 - x1) * t, z = z1 + (z2 - z1) * t;
+          if (p.kind === 'stepping') {
+            const m = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.08, 2.2), stone);
+            m.position.set(x, 0.3, z);
+            m.rotation.y = ry + (s % 2 ? 0.15 : -0.1);
+            m.receiveShadow = true;
+            world.add(m);
+          } else {
+            piece(new THREE.BoxGeometry(0.25, 0.9, 0.25), post, x, 0.45, z);
+          }
+        }
+      }
+    } else if (p.kind === 'pergola') {
+      // open timber pavilion: four posts, slatted sides and a slatted roof
+      const wood = new THREE.MeshStandardMaterial({ color: '#b5602f', roughness: 0.75 });
+      const W = 4, H = 3;
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) piece(new THREE.BoxGeometry(0.3, H, 0.3), wood, p.x + sx * W / 2, H / 2, p.z + sz * W / 2);
+      for (let i = -W / 2; i <= W / 2; i += 0.5) {
+        piece(new THREE.BoxGeometry(0.12, 0.2, W + 0.4), wood, p.x + i, H + 0.1, p.z);
+        piece(new THREE.BoxGeometry(0.1, H * 0.8, 0.1), wood, p.x + i, H * 0.5, p.z - W / 2);
+      }
+      piece(new THREE.BoxGeometry(W - 1, 0.3, 0.8), wood, p.x, 0.45, p.z - W / 2 + 0.6);
     } else if (p.kind === 'carport') {
       piece(new THREE.BoxGeometry(p.w, 0.3, p.d), white, p.x, p.h, p.z);
       const post = new THREE.BoxGeometry(0.25, p.h, 0.25);

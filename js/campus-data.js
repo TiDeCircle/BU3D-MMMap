@@ -128,6 +128,8 @@ export const PLAZAS = [
   { kind: 'lawn', x: -287, z: -212, w: 100, d: 12 },
   // ลานปูอิฐหน้าอาคาร B1
   { kind: 'pavers', x: -82, z: -74, w: 46, d: 8 },
+  // สวน Pocket Park ฝั่งใต้ของถนนสายกลาง ตรงข้ามลานโต๊ะม้านั่ง (สนามหญ้าโล่ง ต้นไม้วางเอง)
+  { kind: 'lawn', x: 35, z: -98, w: 92, d: 64 },
   // ลานโต๊ะม้านั่งใต้ร่มไม้ ฝั่งตะวันตกของ B4
   { kind: 'pavers', x: 40, z: -33, w: 40, d: 34 },
 ];
@@ -169,7 +171,7 @@ export const SIGNS = [
 
 // ของประกอบฉากหน้ามหาวิทยาลัย
 // gate = ป้อมยามฝั่งใต้ของถนนทางเข้าและไม้กั้น, hedge = แนวพุ่มไม้, colonnade = แนวเสาเอียง, pylon = ป้ายเสาสีดำ, busstop = ศาลาพักผู้โดยสาร (len ตามแนว z),
-// canopy = ทางเดินมีหลังคา, carport = หลังคาโรงจอดรถ, picnic = โต๊ะม้านั่งใต้หลังคาเพิง, crosswalk = ทางม้าลาย, tree = ต้นไม้ที่วางเอง, fence = รั้วตาข่าย, bleachers = อัฒจันทร์ (len ตามแนว z), umbrellas = ร่มผ้าใบเรียงตามแนว z, sculpture = รูปปั้นสีขาวหน้าทางเข้า A3
+// canopy = ทางเดินมีหลังคา, carport = หลังคาโรงจอดรถ, picnic = โต๊ะม้านั่งใต้หลังคาเพิง, crosswalk = ทางม้าลาย, tree = ต้นไม้ที่วางเอง, parksign = ป้ายรูปลิ่ม, hoarding = รั้วชั่วคราวมีข้อความ, stream = ลำธาร, stepping = ทางเดินแผ่นหิน, bollards = ไฟทางเดินเสาเตี้ย, pergola = ศาลาไม้ระแนง, fence = รั้วตาข่าย, bleachers = อัฒจันทร์ (len ตามแนว z), umbrellas = ร่มผ้าใบเรียงตามแนว z, sculpture = รูปปั้นสีขาวหน้าทางเข้า A3
 export const PROPS = [
   { kind: 'gate', x: -694, z: -18, w: 12 },
   { kind: 'hedge', x1: -690, z1: -10, x2: -560, z2: -10, w: 1.6, h: 1.1 },
@@ -187,6 +189,19 @@ export const PROPS = [
   // ต้นไม้ใหญ่ให้ร่มเงาบนลานโต๊ะม้านั่ง
   { kind: 'tree', x: 25, z: -45 }, { kind: 'tree', x: 40, z: -45 }, { kind: 'tree', x: 55, z: -44 },
   { kind: 'tree', x: 25, z: -18 }, { kind: 'tree', x: 55, z: -17 }, { kind: 'tree', x: 58, z: -30 },
+
+  // ── สวน Pocket Park ──
+  { kind: 'parksign', x: 58, z: -73, w: 11, h: 3, line1: 'WELCOME TO', line2: 'POCKET PARK' },
+  { kind: 'hoarding', x1: -12, z1: -70, x2: -12, z2: -114, h: 3, text: 'NEW CAFETERIA COMING SOON' },
+  { kind: 'stream', w: 2, pts: [[4, -72], [16, -84], [10, -98], [24, -110], [44, -124], [58, -133]] },
+  { kind: 'stepping', step: 2.6, pts: [[46, -68], [50, -82], [42, -96], [48, -110], [38, -122]] },
+  { kind: 'bollards', step: 7, pts: [[49, -70], [53, -82], [45, -96], [51, -110], [41, -121]] },
+  { kind: 'pergola', x: 0, z: -102 },
+  { kind: 'pergola', x: 34, z: -127 },
+  { kind: 'pergola', x: 48, z: -126 },
+  { kind: 'tree', x: 8, z: -86 }, { kind: 'tree', x: 26, z: -76 }, { kind: 'tree', x: 34, z: -92 },
+  { kind: 'tree', x: 22, z: -100 }, { kind: 'tree', x: 62, z: -92 }, { kind: 'tree', x: 70, z: -108 },
+  { kind: 'tree', x: 4, z: -120 }, { kind: 'tree', x: 58, z: -116 }, { kind: 'tree', x: 74, z: -78 },
   { kind: 'crosswalk', x: -8, z: -60, len: 8, w: 6 },
   { kind: 'crosswalk', x: -60, z: -60, len: 8, w: 5 },
   // ไม้กั้นและป้อมยามทางเข้าลานจอด, แนวพุ่มไม้ระหว่างลานจอดกับเลนบน และพุ่มไม้บนเกาะกลาง
@@ -356,6 +371,12 @@ export const BUILDINGS = [
     x: -8, z: -31, w: 54, d: 22, h: 19, color: '#f3f3f1',
     also: ['คณะวิศวกรรมศาสตร์ (School of Engineering)', 'ห้องปฏิบัติการวิศวกรรม'],
     desc: 'อาคาร 5 ชั้นของคณะวิศวกรรมศาสตร์ ทางทิศเหนือของถนนสายกลาง ชั้นล่าง 2 ชั้นเป็นผนังอิฐสีแดงส้ม ชั้นบนเป็นผนังขาวมีระเบียง ทางเข้ากลางมีหลังคาคอนกรีตทรงคางหมูบนเสาสีม่วง ด้านข้างมีบันไดสีม่วง ฝั่งตะวันตกเป็นลานโต๊ะม้านั่งใต้ร่มไม้และสระบัว' },
+
+  { num: 43, id: 'POCKET', zone: 'B', label: 'Pocket Park', category: 'culture', shape: 'none',
+    nameTh: 'สวน Pocket Park', nameEn: 'Pocket Park',
+    x: 35, z: -98, w: 80, d: 56, h: 4, color: '#6fae4f',
+    note: 'ไม่อยู่ในแผนผังทางการ เพิ่มจากภาพ virtual tour',
+    desc: 'สวนเล็กที่จัดใหม่ ฝั่งใต้ของถนนสายกลาง ตรงข้ามลานโต๊ะม้านั่งข้างอาคาร B4 มีป้ายรูปลิ่ม WELCOME TO POCKET PARK สนามหญ้าใต้ร่มไม้ ลำธารเล็กไหลลงสระบัว ศาลาไม้ระแนงสีส้ม และทางเดินแผ่นหิน' },
 
   // ───── โซน C ───── (ในวงรอบถนนรอบอาคาร Bangkok University International; ตำแหน่งอาคารยังไม่ยืนยัน)
   { num: 40, id: 'BUI', zone: 'C', label: 'BU International', category: 'academic', shape: 'box',

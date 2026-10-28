@@ -33,6 +33,9 @@
 | `tour-b4-front.webp` | virtual tour (virtualtour.bu.ac.th) จากถนนสายกลาง | ด้านหน้า B4: ฐานอิฐ 2 ชั้น ชั้นบนขาวมีระเบียง หลังคาคางหมูบนเสาม่วง แบนเนอร์ School of Engineering ทางม้าลาย |
 | `streetview-b4-west-plaza.webp` | Google Street View (ก.พ. 2022) มองไปทางทิศเหนือ | ลานโต๊ะม้านั่งใต้ร่มไม้ฝั่งตะวันตกของ B4 บันไดสีม่วง |
 | `streetview-b4-lotus-pond.webp` | Google Street View (ก.พ. 2022) มองไปทางทิศเหนือ | สระบัวและสนามหญ้าถัดจากลานโต๊ะม้านั่งไปทางตะวันตก |
+| `tour-pocket-park-sign.webp` | virtual tour (virtualtour.bu.ac.th) จากทางเท้าริมถนนสายกลาง มองไปทางใต้ | ป้าย WELCOME TO POCKET PARK, รั้วเหลือง NEW CAFETERIA COMING SOON |
+| `tour-pocket-park-lawn.webp` | virtual tour (virtualtour.bu.ac.th) | สนามหญ้า ลำธาร ศาลาไม้ระแนงสีส้ม สระด้านหลัง |
+| `tour-pocket-park-path.webp` | virtual tour (virtualtour.bu.ac.th) | ทางเดินแผ่นหิน ไฟทางเดิน ศาลาริมสระ |
 
 ## ภาพที่ใช้แล้วแต่ยังไม่ได้อยู่ในโฟลเดอร์นี้
 
