@@ -403,7 +403,7 @@ for (const r of ROADS) {
   const edge = CAMPUS.outline.reduce((a, [x]) => Math.min(a, x), Infinity);
   const g = new THREE.BoxGeometry(edge - HW_EDGE, PLATFORM, 12);
   const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: '#6c7178', roughness: 0.9 }));
-  m.position.set((edge + HW_EDGE) / 2, -PLATFORM / 2 + 0.29, 15);
+  m.position.set((edge + HW_EDGE) / 2, -PLATFORM / 2 + 0.29, CAMPUS.entrance[1]);
   m.receiveShadow = true;
   world.add(m);
   const walk = flat(
@@ -445,6 +445,7 @@ const waterMat = nightAware(
   'color', '#4fa8de', '#1b3654',
 );
 const bankMat = new THREE.MeshStandardMaterial({ color: '#e9f1f4', roughness: 0.9 });
+const islandMat = nightAware(new THREE.MeshStandardMaterial({ color: '#7fb85d', roughness: 0.95 }), 'color', '#7fb85d', '#4e7356');
 function grownPolygon(pts, by) {
   const cx = pts.reduce((s, p) => s + p[0], 0) / pts.length;
   const cz = pts.reduce((s, p) => s + p[1], 0) / pts.length;
@@ -469,6 +470,11 @@ for (const w of WATER) {
   if (w.kind === 'canal') {
     flat(new THREE.PlaneGeometry(w.w, w.d + 3).rotateX(-Math.PI / 2), bankMat, w.x, 0.18, w.z);
     flat(new THREE.PlaneGeometry(w.w, w.d).rotateX(-Math.PI / 2), waterMat, w.x, 0.26, w.z);
+    continue;
+  }
+  if (w.kind === 'island') {
+    const isle = flat(new THREE.CircleGeometry(1, 48).rotateX(-Math.PI / 2), islandMat, w.x, 0.34, w.z);
+    isle.scale.set(w.rx, 1, w.rz);
     continue;
   }
   const bank = flat(new THREE.CircleGeometry(1, 72).rotateX(-Math.PI / 2), bankMat, w.x, 0.18, w.z);
@@ -936,10 +942,17 @@ const builders = {
     rooftopUnits(group, b, b.w, b.d, b.h, hashStr(b.id));
   },
   tower(group, b) {
+    // b.tower = [x, z, w, d] places the tower inside a wider footprint; b.podium = [x, z, w, d, h] adds a low base
+    const [tx, tz, tw, td] = b.tower || [0, 0, b.w, b.d];
+    if (b.podium) {
+      const [px, pz, pw, pd, ph] = b.podium;
+      block(group, { ...b, glass: false, color: '#f1efea' }, pw, pd, ph, 0, px, pz);
+    }
     const parts = [[0.4, 0, 0], [0.34, 2.5, -2], [0.26, -2, 2.5]];
     let y = 0;
     parts.forEach(([f, ox, oz], i) => {
-      const hh = b.h * f, w = b.w - i * 3, d = b.d - i * 3;
+      ox += tx; oz += tz;
+      const hh = b.h * f, w = tw - i * 3, d = td - i * 3;
       block(group, b, w, d, hh, y, ox, oz);
       const band = new THREE.Mesh(
         new THREE.BoxGeometry(w + 1.2, 1.4, d + 1.2),
@@ -950,7 +963,7 @@ const builders = {
       y += hh + 0.5;
     });
     const fin = new THREE.Mesh(new THREE.BoxGeometry(2, 10, 8), new THREE.MeshStandardMaterial({ color: b.accent }));
-    fin.position.set(-2, y + 5, 2.5);
+    fin.position.set(tx - 2, y + 5, tz + 2.5);
     add(group, fin, b.id);
   },
   round(group, b) {
@@ -1492,7 +1505,7 @@ function enterWalk(b) {
   controls.enabled = false;
   document.body.classList.add('walking');
   walkHud.hidden = false;
-  let x = -690, z = 15, yaw = -Math.PI / 2;
+  let [x, z] = CAMPUS.entrance, yaw = -Math.PI / 2;
   if (b) {
     // ยืนห่างจากด้านหน้าอาคาร (ฝั่ง z บวก) แล้วหันเข้าหาอาคาร
     x = b.x;
@@ -1735,7 +1748,7 @@ function drawMiniStatic() {
     x.beginPath();
     if (w.kind === 'pool') w.pts.forEach(([px, pz], i) => (i ? x.lineTo(px, pz) : x.moveTo(px, pz)));
     else if (w.kind === 'canal') x.rect(w.x - w.w / 2, w.z - w.d / 2, w.w, w.d);
-    else x.ellipse(w.x, w.z, w.rx, w.rz, 0, 0, Math.PI * 2);
+    else if (w.kind !== 'island') x.ellipse(w.x, w.z, w.rx, w.rz, 0, 0, Math.PI * 2);
     x.fill();
   }
   for (const f of FIELDS) { x.fillStyle = f.kind === 'track' ? '#c4603f' : '#3f8a5a'; x.fillRect(f.x - f.w / 2, f.z - f.d / 2, f.w, f.d); }
