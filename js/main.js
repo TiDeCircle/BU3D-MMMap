@@ -128,12 +128,12 @@ const hemi = new THREE.HemisphereLight('#dcecff', '#6d8a52', 1.15);
 scene.add(hemi);
 
 const sun = new THREE.DirectionalLight('#fff2dc', 2.4);
-const SHADOW_CENTER = new THREE.Vector3(230, 0, -180);
+const SHADOW_CENTER = new THREE.Vector3(520, 0, -150);
 sun.position.copy(SHADOW_CENTER).add(new THREE.Vector3(-520, 760, 420));
 sun.target.position.copy(SHADOW_CENTER);
 sun.castShadow = true;
 sun.shadow.mapSize.set(4096, 4096);
-Object.assign(sun.shadow.camera, { left: -1050, right: 1050, top: 700, bottom: -700, near: 10, far: 2600 });
+Object.assign(sun.shadow.camera, { left: -1350, right: 1350, top: 800, bottom: -800, near: 10, far: 3000 });
 sun.shadow.bias = -0.0004;
 sun.shadow.normalBias = 0.6;
 scene.add(sun, sun.target);
@@ -779,6 +779,74 @@ function solarTexture() {
 }
 const solarTex = solarTexture();
 
+// Dark wooden-shingle wall; with mural = true it also carries the SAC front: white figures,
+// the SAC sign with an inverted triangle over the door, and a teal glass box.
+function shingleTexture(wm, hm, mural) {
+  const PX = 10;
+  const W = Math.round(wm * PX), H = Math.round(hm * PX);
+  const [c, x] = canvas(W, H);
+  const r = mulberry32(Math.round(wm * 7 + hm));
+  x.fillStyle = '#4e3c31'; x.fillRect(0, 0, W, H);
+  const row = 0.45 * PX, col = 0.9 * PX;
+  for (let y = 0, i = 0; y < H; y += row, i++) {
+    for (let xx = (i % 2) * col / 2 - col; xx < W; xx += col) {
+      const t = 0.75 + r() * 0.5;
+      x.fillStyle = `rgb(${Math.round(98 * t)},${Math.round(78 * t)},${Math.round(64 * t)})`;
+      x.fillRect(xx + 1, y + 1, col - 2, row - 1.5);
+    }
+  }
+  if (mural) {
+    x.fillStyle = '#ece9e2';
+    const fig = (cx, scale) => {
+      const s = scale * PX;
+      x.beginPath(); x.arc(cx, H - 6.2 * s, 0.7 * s, 0, Math.PI * 2); x.fill();
+      x.beginPath(); x.ellipse(cx, H - 4.2 * s, 0.9 * s, 1.5 * s, 0.2, 0, Math.PI * 2); x.fill();
+      x.fillRect(cx - 0.6 * s, H - 3 * s, 0.4 * s, 2.2 * s);
+      x.fillRect(cx + 0.3 * s, H - 3 * s, 0.4 * s, 2.2 * s);
+    };
+    const drums = (cx, s0) => {
+      const s = s0 * PX;
+      fig(cx, s0);
+      for (const [dx, dy, rx] of [[-2.2, 2.6, 0.9], [2.2, 2.6, 0.9], [-1.2, 3.4, 0.6], [1.3, 3.4, 0.6]]) {
+        x.beginPath(); x.ellipse(cx + dx * s, H - dy * s, rx * s, 0.25 * s, 0, 0, Math.PI * 2); x.fill();
+      }
+      x.beginPath(); x.ellipse(cx, H - 1.6 * s, 1.3 * s, 1 * s, 0, 0, Math.PI * 2); x.fill();
+    };
+    fig(W * 0.06, 1); drums(W * 0.24, 1); fig(W * 0.86, 1.1);
+    x.save(); x.translate(W * 0.13, H * 0.35); x.rotate(-0.6); x.fillRect(-2 * PX, -0.4 * PX, 4 * PX, 0.8 * PX); x.restore();
+    // sign, triangle and door in the middle
+    x.font = `700 ${Math.round(1.8 * PX)}px "Chakra Petch", sans-serif`;
+    x.textAlign = 'center';
+    x.fillText('SAC', W * 0.5, H * 0.3);
+    x.beginPath(); x.moveTo(W * 0.5 - 1.6 * PX, H * 0.36); x.lineTo(W * 0.5 + 1.6 * PX, H * 0.36); x.lineTo(W * 0.5, H * 0.56); x.closePath(); x.fill();
+    x.fillStyle = '#c9b347'; x.fillRect(W * 0.5 - 1.2 * PX, H * 0.6, 2.4 * PX, H * 0.4);
+    x.fillStyle = '#2e3a33'; x.fillRect(W * 0.5 - 0.9 * PX, H * 0.64, 1.8 * PX, H * 0.36);
+    x.fillStyle = '#5fa3a0'; x.fillRect(W * 0.68, H * 0.42, 6 * PX, H * 0.58);
+    x.strokeStyle = '#dfeeed'; x.lineWidth = 2;
+    for (let i = 1; i < 4; i++) { x.beginPath(); x.moveTo(W * 0.68 + i * 1.5 * PX, H * 0.42); x.lineTo(W * 0.68 + i * 1.5 * PX, H); x.stroke(); }
+  }
+  return toTexture(c);
+}
+
+function shingleBlock(group, b, x, z, w, d, h) {
+  const mat = (wm, mural) => nightAware(new THREE.MeshStandardMaterial({ map: shingleTexture(wm, h, mural), roughness: 0.95 }), 'color', '#ffffff', '#7a808c');
+  const side = mat(d, false), back = mat(w, false), front = mat(w, true);
+  // face order +x, -x, +y, -y, +z (north, facing the road), -z
+  const body = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), [side, side, roofMat, roofMat, front, back]);
+  body.position.set(x, h / 2, z);
+  add(group, body, b.id);
+  const roof = new THREE.Mesh(gableRoof(w, d, 2.4, 0.8), new THREE.MeshStandardMaterial({ color: b.roof || '#4a3a30', roughness: 0.9, flatShading: true }));
+  roof.position.set(x, h, z);
+  add(group, roof, b.id);
+  // hedges along the front, leaving the entrance free
+  const hedge = new THREE.MeshStandardMaterial({ color: '#557f35', roughness: 0.95 });
+  for (const [hx, hw] of [[-w * 0.27, w * 0.42], [w * 0.27, w * 0.42]]) {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(hw, 1.2, 1.4), hedge);
+    m.position.set(x + hx, 0.6, z + d / 2 + 1.2);
+    add(group, m, b.id);
+  }
+}
+
 function addSolar(group, x, z, w, d, y) {
   const t = solarTex.clone();
   t.repeat.set((w * 0.8) / 16, (d * 0.85) / 16);
@@ -1071,6 +1139,7 @@ const builders = {
     // hull (faceted mass from points), glass / curtain / box (walls with windows), solid (plain box, optional y0)
     for (const part of b.parts) {
       if (part.hull) { facetMass(group, b, part.hull); continue; }
+      if (part.shingle) { shingleBlock(group, b, ...part.shingle); continue; }
       if (part.solid) {
         const [x, z, w, d, h, y0 = 0] = part.solid;
         const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshStandardMaterial({ color: part.color || b.color, roughness: 0.7 }));
@@ -1150,14 +1219,14 @@ function blocked(x, z, pad) {
       }
     }
   }
-  for (let i = 0; i < 9000 && spots.length < 1500; i++) {
+  for (let i = 0; i < 18000 && spots.length < 2800; i++) {
     const B = OUTLINE_BOUNDS;
     const x = B.minX + r() * (B.maxX - B.minX), z = B.minZ + r() * (B.maxZ - B.minZ);
     if (!blocked(x, z, 6)) spots.push([x, z, 0.7 + r() * 0.7]);
   }
   for (let i = 0; i < 500; i++) {
     const a = r() * Math.PI * 2, dist = 900 + r() * 1800;
-    const x = 240 + Math.cos(a) * dist, z = -180 + Math.sin(a) * dist * 0.7;
+    const x = 520 + Math.cos(a) * (dist + 300), z = -150 + Math.sin(a) * dist * 0.7;
     if (Math.abs(x - HW_X) > 40) spots.push([x, z, 0.8 + r() * 0.8, true]);
   }
 
