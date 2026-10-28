@@ -612,7 +612,7 @@ function facetPanelTexture() {
     x.beginPath(); x.moveTo(i, 0); x.lineTo(i, 512); x.stroke();
     x.beginPath(); x.moveTo(0, i); x.lineTo(512, i); x.stroke();
   }
-  x.fillStyle = '#2d474c';
+  x.fillStyle = '#9fb4bb';
   for (const [sx, sy, len, th] of [[30, 110, 320, 14], [150, 230, 330, 11], [40, 360, 230, 16], [280, 420, 200, 10], [260, 60, 210, 9]]) {
     x.save();
     x.translate(sx, sy);
@@ -736,44 +736,20 @@ function addPlanarUVs(g, scale) {
   g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
 }
 
-const facetGlassMat = nightAware(
-  new THREE.MeshStandardMaterial({
-    color: '#3e5d62', metalness: 0.6, roughness: 0.08, flatShading: true,
-    envMap: envTex, envMapIntensity: 1.3, emissive: '#ffd9a0', emissiveIntensity: 0,
-  }),
-  'emissiveIntensity', 0, 0.35,
-);
-
-// Faceted wing: the low triangles of the walls become glass and the rest white cladding,
-// which gives the alternating white and glass panels of the real wings.
 function facetMass(group, b, pts) {
-  const hull = new ConvexGeometry(pts.map(([x, y, z]) => new THREE.Vector3(x, y, z)));
-  const p = hull.attributes.position;
-  const top = Math.max(...pts.map((q) => q[1]));
-  const clad = [], glass = [];
-  for (let i = 0; i < p.count; i += 3) {
-    const tri = [];
-    for (let k = 0; k < 3; k++) tri.push(p.getX(i + k), p.getY(i + k), p.getZ(i + k));
-    const cy = (tri[1] + tri[4] + tri[7]) / 3;
-    (cy < top * 0.4 ? glass : clad).push(...tri);
-  }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.Float32BufferAttribute([...clad, ...glass], 3));
-  g.addGroup(0, clad.length / 3, 0);
-  g.addGroup(clad.length / 3, glass.length / 3, 1);
-  g.computeVertexNormals();
+  const g = new ConvexGeometry(pts.map(([x, y, z]) => new THREE.Vector3(x, y, z)));
   addPlanarUVs(g, 1 / 40);
   const mat = nightAware(
     new THREE.MeshStandardMaterial({
-      color: b.color, map: panelTex, metalness: 0.35, roughness: 0.3, flatShading: true,
-      envMap: envTex, envMapIntensity: 0.9, emissive: '#9fd4ff', emissiveIntensity: 0,
+      color: b.color, map: panelTex, metalness: 0.2, roughness: 0.4, flatShading: true,
+      envMap: envTex, envMapIntensity: 0.9, emissive: '#dfe9ef', emissiveIntensity: 0.22,
     }),
-    'emissiveIntensity', 0, 0.25,
+    'emissiveIntensity', 0.22, 0.3,
   );
-  add(group, new THREE.Mesh(g, [mat, facetGlassMat]), b.id);
+  add(group, new THREE.Mesh(g, mat), b.id);
   group.add(new THREE.LineSegments(
     new THREE.EdgesGeometry(g, 1),
-    new THREE.LineBasicMaterial({ color: '#4d5a60', transparent: true, opacity: 0.5 }),
+    new THREE.LineBasicMaterial({ color: '#8d999f', transparent: true, opacity: 0.45 }),
   ));
 }
 
