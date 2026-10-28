@@ -4,7 +4,7 @@ import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer
 import { ConvexGeometry } from 'three/addons/geometries/ConvexGeometry.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import {
-  CAMPUS, ZONES, CATEGORIES, ROADS, PLAZAS, WATER, FIELDS, SIGNS, BUILDINGS, START_VIEW,
+  CAMPUS, ZONES, CATEGORIES, ROADS, PLAZAS, WATER, FIELDS, SIGNS, FLAGPOLES, BUILDINGS, START_VIEW,
 } from './campus-data.js';
 
 // ───────────────────────── utilities ─────────────────────────
@@ -377,8 +377,14 @@ function flat(geo, mat, x, y, z, receive = true) {
 const roadTex = asphaltTexture(false);
 const highwayTex = asphaltTexture(true);
 const roadMats = new Map();
+const pathMat = nightAware(new THREE.MeshStandardMaterial({ color: '#e2ddd2', roughness: 0.9 }), 'color', '#e2ddd2', '#6a6f78');
 for (const r of ROADS) {
   const len = Math.hypot(r.x2 - r.x1, r.z2 - r.z1);
+  if (r.path) {
+    const m = flat(new THREE.PlaneGeometry(len, r.w).rotateX(-Math.PI / 2), pathMat, (r.x1 + r.x2) / 2, 0.32, (r.z1 + r.z2) / 2);
+    m.rotation.y = -Math.atan2(r.z2 - r.z1, r.x2 - r.x1);
+    continue;
+  }
   const base = r.highway ? highwayTex : roadTex;
   const tex = base.clone();
   tex.repeat.set(len / (r.highway ? 40 : 24), 1);
@@ -420,7 +426,24 @@ const waterMat = nightAware(
   'color', '#4fa8de', '#1b3654',
 );
 const bankMat = new THREE.MeshStandardMaterial({ color: '#e9f1f4', roughness: 0.9 });
+function grownPolygon(pts, by) {
+  const cx = pts.reduce((s, p) => s + p[0], 0) / pts.length;
+  const cz = pts.reduce((s, p) => s + p[1], 0) / pts.length;
+  return pts.map(([x, z]) => {
+    const d = Math.hypot(x - cx, z - cz) || 1;
+    return [cx + ((x - cx) * (d + by)) / d, cz + ((z - cz) * (d + by)) / d];
+  });
+}
+function polygonGeometry(pts) {
+  return new THREE.ShapeGeometry(new THREE.Shape(pts.map(([x, z]) => new THREE.Vector2(x, -z)))).rotateX(-Math.PI / 2);
+}
+
 for (const w of WATER) {
+  if (w.kind === 'pool') {
+    flat(polygonGeometry(grownPolygon(w.pts, 3)), bankMat, 0, 0.18, 0);
+    flat(polygonGeometry(w.pts), waterMat, 0, 0.26, 0);
+    continue;
+  }
   if (w.kind === 'canal') {
     flat(new THREE.PlaneGeometry(w.w, w.d + 3).rotateX(-Math.PI / 2), bankMat, w.x, 0.18, w.z);
     flat(new THREE.PlaneGeometry(w.w, w.d).rotateX(-Math.PI / 2), waterMat, w.x, 0.26, w.z);
@@ -462,10 +485,36 @@ for (const s of SIGNS) {
   sign.rotation.y = -Math.PI / 2;
   sign.castShadow = true;
   world.add(sign);
-  const hedge = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1, s.w + 6), new THREE.MeshStandardMaterial({ color: '#b7c64a', roughness: 0.9 }));
-  hedge.position.set(s.x + 2.5, 0.5, s.z);
+  const hedge = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1, s.hedge || s.w + 6), new THREE.MeshStandardMaterial({ color: '#b7c64a', roughness: 0.9 }));
+  hedge.position.set(s.x + 2.5, 0.5, s.hedgeZ ?? s.z);
   hedge.receiveShadow = true;
   world.add(hedge);
+}
+
+function thaiFlagTexture() {
+  const [c, x] = canvas(96, 64);
+  [['#a51931', 0, 1], ['#f4f5f8', 1, 1], ['#2d2a4a', 2, 2], ['#f4f5f8', 4, 1], ['#a51931', 5, 1]].forEach(([col, y, h]) => {
+    x.fillStyle = col;
+    x.fillRect(0, (y * 64) / 6, 96, (h * 64) / 6 + 0.5);
+  });
+  return toTexture(c);
+}
+{
+  const poleMat = new THREE.MeshStandardMaterial({ color: '#f2f3f5', roughness: 0.4, metalness: 0.3 });
+  const flagMat = new THREE.MeshStandardMaterial({ map: thaiFlagTexture(), side: THREE.DoubleSide, roughness: 0.8 });
+  for (const f of FLAGPOLES) {
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.3, f.h, 8), poleMat);
+    pole.position.set(f.x, f.h / 2, f.z);
+    pole.castShadow = true;
+    world.add(pole);
+    if (f.flag) {
+      const flag = new THREE.Mesh(new THREE.PlaneGeometry(4.5, 3), flagMat);
+      flag.position.set(f.x, f.h - 1.8, f.z + 2.4);
+      flag.rotation.y = Math.PI / 2 - 0.3;
+      flag.castShadow = true;
+      world.add(flag);
+    }
+  }
 }
 
 // ───────────────────────── buildings ─────────────────────────
@@ -591,6 +640,83 @@ function solarTexture() {
 }
 const solarTex = solarTexture();
 
+// Curtain wall: glass grid crossed by the large white diagonal members seen on A3.
+// Lines are [u1, v1, u2, v2] across one face, v = 0 at the top.
+const CURTAIN_LINES = [
+  [0, 0, 0.46, 1], [1, 0, 0.54, 1], [0.22, 0, 0.46, 1], [0.78, 0, 0.54, 1],
+  [0, 0.62, 0.22, 0], [1, 0.62, 0.78, 0], [0.22, 0, 0.5, 0.42], [0.78, 0, 0.5, 0.42],
+];
+function curtainTextures(wm, hm, seed) {
+  const PX = 8;
+  const W = Math.min(2048, Math.round(wm * PX)), H = Math.round(hm * PX);
+  const [dc, d] = canvas(W, H);
+  const [lc, l] = canvas(W, H);
+  const r = mulberry32(seed);
+  const bay = 1.6 * (W / wm), floor = FLOOR_H * (H / hm);
+  l.fillStyle = '#000'; l.fillRect(0, 0, W, H);
+  for (let y = 0; y < H; y += floor) {
+    for (let x = 0; x < W; x += bay) {
+      const t = 0.82 + r() * 0.18;
+      d.fillStyle = `rgb(${Math.round(150 * t)},${Math.round(178 * t)},${Math.round(184 * t)})`;
+      d.fillRect(x, y, bay, floor);
+      if (r() < 0.5) {
+        l.fillStyle = r() < 0.8 ? '#ffd48a' : '#d4e9ff';
+        l.globalAlpha = 0.5 + r() * 0.5;
+        l.fillRect(x + 1, y + 1, bay - 2, floor - 2);
+        l.globalAlpha = 1;
+      }
+    }
+  }
+  const sky = d.createLinearGradient(0, 0, W * 0.6, H);
+  sky.addColorStop(0, 'rgba(255,255,255,0.28)');
+  sky.addColorStop(1, 'rgba(255,255,255,0)');
+  d.fillStyle = sky; d.fillRect(0, 0, W, H);
+  d.strokeStyle = 'rgba(70,80,86,0.55)'; d.lineWidth = 1;
+  for (let x = 0; x <= W; x += bay) { d.beginPath(); d.moveTo(x, 0); d.lineTo(x, H); d.stroke(); }
+  d.lineWidth = 2;
+  for (let y = 0; y <= H; y += floor) { d.beginPath(); d.moveTo(0, y); d.lineTo(W, y); d.stroke(); }
+  for (const ctx of [d, l]) {
+    ctx.strokeStyle = ctx === d ? '#f4f5f6' : '#000';
+    ctx.lineWidth = 0.7 * PX;
+    ctx.lineCap = 'square';
+    for (const [u1, v1, u2, v2] of CURTAIN_LINES) {
+      ctx.beginPath(); ctx.moveTo(u1 * W, v1 * H); ctx.lineTo(u2 * W, v2 * H); ctx.stroke();
+    }
+    ctx.strokeRect(0, 0, W, H);
+  }
+  return { map: toTexture(dc), lit: toTexture(lc) };
+}
+
+function curtainBlock(group, b, x, z, w, d, h, lobby) {
+  const face = (wm, seed) => {
+    const t = curtainTextures(wm, h - lobby, seed);
+    return nightAware(new THREE.MeshStandardMaterial({
+      map: t.map, emissive: '#ffffff', emissiveMap: t.lit, emissiveIntensity: 0,
+      roughness: 0.18, metalness: 0.35, envMap: envTex, envMapIntensity: 0.8,
+    }), 'emissiveIntensity', 0, 0.9);
+  };
+  const fx = face(d, 31), fz = face(w, 32);
+  const body = new THREE.Mesh(new THREE.BoxGeometry(w, h - lobby, d), [fx, fx, roofMat, roofMat, fz, fz]);
+  body.position.set(x, lobby + (h - lobby) / 2, z);
+  add(group, body, b.id);
+  const lobbyBox = new THREE.Mesh(new THREE.BoxGeometry(w - 8, lobby, d - 8), facadeMaterial('#9cc0c4', w, lobby, true));
+  lobbyBox.position.set(x, lobby / 2, z);
+  add(group, lobbyBox, b.id);
+  const white = new THREE.MeshStandardMaterial({ color: '#f1f2f3', roughness: 0.6 });
+  const parapet = new THREE.Mesh(new THREE.BoxGeometry(w + 0.8, 1.4, d + 0.8), white);
+  parapet.position.set(x, h + 0.7, z);
+  add(group, parapet, b.id);
+  // columns carrying the floating block over the lobby
+  const colG = new THREE.BoxGeometry(1.2, lobby, 1.2);
+  for (const sx of [-1, 1]) {
+    for (const sz of [-0.5, 0, 0.5, -1, 1]) {
+      const col = new THREE.Mesh(colG, white);
+      col.position.set(x + sx * (w / 2 - 2), lobby / 2, z + sz * (d / 2 - 2));
+      add(group, col, b.id);
+    }
+  }
+}
+
 // ConvexGeometry has no UVs; project each triangle onto the plane it faces most
 function addPlanarUVs(g, scale) {
   const p = g.attributes.position;
@@ -610,8 +736,32 @@ function addPlanarUVs(g, scale) {
   g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
 }
 
+const facetGlassMat = nightAware(
+  new THREE.MeshStandardMaterial({
+    color: '#3e5d62', metalness: 0.6, roughness: 0.08, flatShading: true,
+    envMap: envTex, envMapIntensity: 1.3, emissive: '#ffd9a0', emissiveIntensity: 0,
+  }),
+  'emissiveIntensity', 0, 0.35,
+);
+
+// Faceted wing: the low triangles of the walls become glass and the rest white cladding,
+// which gives the alternating white and glass panels of the real wings.
 function facetMass(group, b, pts) {
-  const g = new ConvexGeometry(pts.map(([x, y, z]) => new THREE.Vector3(x, y, z)));
+  const hull = new ConvexGeometry(pts.map(([x, y, z]) => new THREE.Vector3(x, y, z)));
+  const p = hull.attributes.position;
+  const top = Math.max(...pts.map((q) => q[1]));
+  const clad = [], glass = [];
+  for (let i = 0; i < p.count; i += 3) {
+    const tri = [];
+    for (let k = 0; k < 3; k++) tri.push(p.getX(i + k), p.getY(i + k), p.getZ(i + k));
+    const cy = (tri[1] + tri[4] + tri[7]) / 3;
+    (cy < top * 0.4 ? glass : clad).push(...tri);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute([...clad, ...glass], 3));
+  g.addGroup(0, clad.length / 3, 0);
+  g.addGroup(clad.length / 3, glass.length / 3, 1);
+  g.computeVertexNormals();
   addPlanarUVs(g, 1 / 40);
   const mat = nightAware(
     new THREE.MeshStandardMaterial({
@@ -620,7 +770,7 @@ function facetMass(group, b, pts) {
     }),
     'emissiveIntensity', 0, 0.25,
   );
-  add(group, new THREE.Mesh(g, mat), b.id);
+  add(group, new THREE.Mesh(g, [mat, facetGlassMat]), b.id);
   group.add(new THREE.LineSegments(
     new THREE.EdgesGeometry(g, 1),
     new THREE.LineBasicMaterial({ color: '#4d5a60', transparent: true, opacity: 0.5 }),
@@ -748,12 +898,13 @@ const builders = {
     add(group, spire, b.id);
   },
   composite(group, b) {
-    // hand-placed parts: faceted masses (hull points) and glass blocks [x, z, w, d, h]
+    // hand-placed parts: faceted masses (hull points), glass blocks and curtain-wall blocks [x, z, w, d, h]
     for (const part of b.parts) {
       if (part.hull) facetMass(group, b, part.hull);
-      if (part.glass) {
-        const [x, z, w, d, h] = part.glass;
-        block(group, { ...b, color: b.glassColor || '#86b3ad', glass: true }, w, d, h, 0, x, z);
+      if (part.glass || part.curtain) {
+        const [x, z, w, d, h] = part.glass || part.curtain;
+        if (part.curtain) curtainBlock(group, b, x, z, w, d, h, part.lobby || 0);
+        else block(group, { ...b, color: b.glassColor || '#86b3ad', glass: true }, w, d, h, 0, x, z);
         if (part.solar) {
           const t = solarTex.clone();
           t.repeat.set((w * 0.8) / 16, (d * 0.85) / 16);
@@ -762,7 +913,7 @@ const builders = {
             new THREE.PlaneGeometry(w * 0.8, d * 0.85).rotateX(-Math.PI / 2),
             new THREE.MeshStandardMaterial({ map: t, roughness: 0.35, metalness: 0.3 }),
           );
-          panels.position.set(x, h + 1.05, z);
+          panels.position.set(x, h + (part.curtain ? 1.45 : 1.05), z);
           panels.receiveShadow = true;
           group.add(panels);
         }
@@ -807,7 +958,8 @@ function blocked(x, z, pad) {
   }
   for (const r of ROADS) if (distToSegment(x, z, r) < r.w / 2 + pad * 0.6) return true;
   for (const w of WATER) {
-    if (w.kind === 'canal') { if (Math.abs(x - w.x) < w.w / 2 + pad && Math.abs(z - w.z) < w.d / 2 + pad) return true; }
+    if (w.kind === 'pool') { if (pointInPolygon(x, z, grownPolygon(w.pts, pad))) return true; }
+    else if (w.kind === 'canal') { if (Math.abs(x - w.x) < w.w / 2 + pad && Math.abs(z - w.z) < w.d / 2 + pad) return true; }
     else if (((x - w.x) / (w.rx + pad)) ** 2 + ((z - w.z) / (w.rz + pad)) ** 2 < 1) return true;
   }
   for (const p of [...PLAZAS, ...FIELDS]) if (Math.abs(x - p.x) < p.w / 2 + pad && Math.abs(z - p.z) < p.d / 2 + pad) return true;
@@ -818,7 +970,7 @@ function blocked(x, z, pad) {
   const r = mulberry32(2026);
   const spots = [];
   for (const road of ROADS) {
-    if (road.highway) continue;
+    if (road.highway || road.path) continue;
     const len = Math.hypot(road.x2 - road.x1, road.z2 - road.z1);
     const nx = -(road.z2 - road.z1) / len, nz = (road.x2 - road.x1) / len;
     for (let s = 10; s < len; s += 16) {
@@ -868,6 +1020,7 @@ const lampHeadMat = nightAware(
 {
   const spots = [];
   for (const road of ROADS) {
+    if (road.path) continue;
     const len = Math.hypot(road.x2 - road.x1, road.z2 - road.z1);
     const nx = -(road.z2 - road.z1) / len, nz = (road.x2 - road.x1) / len;
     for (let s = 15; s < len; s += road.highway ? 45 : 34) {
@@ -1419,13 +1572,14 @@ function drawMiniStatic() {
   x.strokeStyle = '#f2b134'; x.lineWidth = 6; x.stroke();
   x.lineCap = 'round';
   for (const r of ROADS) {
-    x.strokeStyle = '#6c7178'; x.lineWidth = r.w;
+    x.strokeStyle = r.path ? '#e2ddd2' : '#6c7178'; x.lineWidth = r.w;
     x.beginPath(); x.moveTo(r.x1, r.z1); x.lineTo(r.x2, r.z2); x.stroke();
   }
   x.fillStyle = '#4fa8de';
   for (const w of WATER) {
     x.beginPath();
-    if (w.kind === 'canal') x.rect(w.x - w.w / 2, w.z - w.d / 2, w.w, w.d);
+    if (w.kind === 'pool') w.pts.forEach(([px, pz], i) => (i ? x.lineTo(px, pz) : x.moveTo(px, pz)));
+    else if (w.kind === 'canal') x.rect(w.x - w.w / 2, w.z - w.d / 2, w.w, w.d);
     else x.ellipse(w.x, w.z, w.rx, w.rz, 0, 0, Math.PI * 2);
     x.fill();
   }
