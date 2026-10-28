@@ -191,9 +191,10 @@ export const WATER = [
 export const FIELDS = [
   // สนามกีฬามหาวิทยาลัยกรุงเทพ (Bangkok University Stadium)
   { kind: 'track', x: 894, z: -209, w: 94, d: 168 },
-  // สนามฟุตบอลและสนามบาสฝั่งตะวันตกของโซน C (ref/drone-solar-parking-field.webp)
-  { kind: 'field', x: 725, z: -160, w: 100, d: 80 },
-  { kind: 'basketball', x: 758, z: -110, w: 26, d: 14 },
+  // สนามฟุตบอลซ้อมกว้าง ใต้ถนนด้านใต้ ระหว่างลานจอดโซลาร์กับสนามกีฬามหาวิทยาลัย
+  // สนามบาสอยู่ริมด้านใต้ของสนาม (ref/tour-field-looking-west.webp)
+  { kind: 'pitch', x: 759, z: -170, w: 158, d: 110 },
+  { kind: 'basketball', x: 805, z: -242, w: 28, d: 15 },
   { kind: 'court', x: 904, z: -360, w: 60, d: 50, lines: 3 },
   // สนามกลางแจ้งโซน B ทางตะวันตกของโรงอาหาร: บาสเกตบอล/วอลเลย์บอล และฟุตซอล
   // แถวตะวันออก (ฝั่งโรงอาหาร): สนามบาส ทางเหนือเป็นอาคารกีฬา
@@ -223,6 +224,9 @@ export const PROPS = [
   { kind: 'sculpture', x: -624, z: -93 },
   // หลังคาโรงจอดรถสีขาว [x, z] กึ่งกลาง, w ตามแนว x, d ตามแนว z
   { kind: 'carport', x: -150, z: -160, w: 44, d: 12, h: 3 },
+  // ประตูฟุตบอลบนสนามซ้อม (ry = หันตามแนวแกน x)
+  { kind: 'goal', x: 692, z: -150 }, { kind: 'goal', x: 754, z: -150 },
+  { kind: 'goal', x: 766, z: -192 }, { kind: 'goal', x: 828, z: -192 },
   // ลานจอดรถหลังคาโซลาร์ (5 แถว)
   { kind: 'carport', x: 626, z: -228, w: 90, d: 11, h: 3.2, solar: true },
   { kind: 'carport', x: 626, z: -254, w: 90, d: 11, h: 3.2, solar: true },

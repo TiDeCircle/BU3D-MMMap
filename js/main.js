@@ -368,6 +368,18 @@ function sportCourtTexture(kind, w, d) {
   return toTexture(c);
 }
 
+// rough practice pitch: uneven grass with worn patches, no mowing stripes
+function pitchTexture() {
+  const [c, x] = canvas(512, 512);
+  x.fillStyle = '#7fae55'; x.fillRect(0, 0, 512, 512);
+  const r = mulberry32(88);
+  for (let i = 0; i < 260; i++) {
+    x.fillStyle = r() < 0.3 ? 'rgba(176,150,96,0.35)' : r() < 0.6 ? 'rgba(90,140,60,0.35)' : 'rgba(150,180,90,0.3)';
+    x.beginPath(); x.arc(r() * 512, r() * 512, 6 + r() * 30, 0, Math.PI * 2); x.fill();
+  }
+  return toTexture(c);
+}
+
 function lawnTexture() {
   const [c, x] = canvas(256, 256);
   for (let i = 0; i < 8; i++) {
@@ -541,6 +553,7 @@ for (const f of FIELDS) {
   const tex = f.kind === 'track' ? trackTexture(tw, td)
     : f.kind === 'court' ? courtTexture(f.w, f.d, f.lines)
     : f.kind === 'futsal' || f.kind === 'basketball' ? sportCourtTexture(f.kind, f.w, f.d)
+    : f.kind === 'pitch' ? pitchTexture()
     : lawnTexture();
   const mat = nightAware(new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9 }), 'color', '#ffffff', '#56606e');
   const g = new THREE.PlaneGeometry(tw, td).rotateX(-Math.PI / 2);
@@ -874,6 +887,10 @@ function thaiFlagTexture() {
         piece(new THREE.BoxGeometry(0.1, H * 0.8, 0.1), wood, p.x + i, H * 0.5, p.z - W / 2);
       }
       piece(new THREE.BoxGeometry(W - 1, 0.3, 0.8), wood, p.x, 0.45, p.z - W / 2 + 0.6);
+    } else if (p.kind === 'goal') {
+      const frame = new THREE.MeshStandardMaterial({ color: '#f4f4f2', roughness: 0.5 });
+      for (const s of [-1, 1]) piece(new THREE.BoxGeometry(0.15, 2.4, 0.15), frame, p.x, 1.2, p.z + s * 3.6);
+      piece(new THREE.BoxGeometry(0.15, 0.15, 7.4), frame, p.x, 2.4, p.z);
     } else if (p.kind === 'carport') {
       if (p.solar) {
         const t = solarTex.clone();
@@ -2584,7 +2601,7 @@ function drawMiniStatic() {
     else if (w.kind !== 'island') x.ellipse(w.x, w.z, w.rx, w.rz, 0, 0, Math.PI * 2);
     x.fill();
   }
-  for (const f of FIELDS) { x.fillStyle = f.kind === 'track' ? '#c4603f' : f.kind === 'futsal' || f.kind === 'basketball' ? '#2f8fe0' : '#3f8a5a'; x.fillRect(f.x - f.w / 2, f.z - f.d / 2, f.w, f.d); }
+  for (const f of FIELDS) { x.fillStyle = f.kind === 'track' ? '#c4603f' : f.kind === 'futsal' || f.kind === 'basketball' ? '#2f8fe0' : f.kind === 'pitch' ? '#7fae55' : '#3f8a5a'; x.fillRect(f.x - f.w / 2, f.z - f.d / 2, f.w, f.d); }
   for (const b of BUILDINGS) {
     if (b.shape === 'none') continue;
     x.fillStyle = CATEGORIES[b.category].color;
