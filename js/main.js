@@ -477,6 +477,8 @@ for (const p of PLAZAS) {
     const t = toTexture(pc);
     t.repeat.set(p.w / 4, p.d / 4);
     mat = new THREE.MeshStandardMaterial({ map: t, roughness: 0.9 });
+  } else if (p.kind === 'site') {
+    mat = new THREE.MeshStandardMaterial({ color: '#a88a62', roughness: 1 });
   } else if (p.kind === 'median') {
     mat = new THREE.MeshStandardMaterial({ color: '#6fae4f', roughness: 0.95 });
   } else if (p.kind === 'strip') {
@@ -763,16 +765,75 @@ function thaiFlagTexture() {
       world.add(label);
     } else if (p.kind === 'hoarding') {
       const len = Math.hypot(p.x2 - p.x1, p.z2 - p.z1);
-      const [hc, hx] = canvas(1024, 64);
-      hx.fillStyle = '#f2c230'; hx.fillRect(0, 0, 1024, 64);
-      hx.fillStyle = '#e07f2a';
-      for (let i = 0; i < 1024; i += 160) { hx.beginPath(); hx.arc(i + 60, 40, 18, 0, Math.PI * 2); hx.fill(); }
-      hx.fillStyle = '#5a3a12'; hx.font = '700 30px "Chakra Petch", sans-serif';
-      hx.fillText(p.text, 380, 42);
-      const wall = piece(new THREE.BoxGeometry(len, p.h, 0.2), [0, 0, 0, 0, 0, 0].map(() =>
-        new THREE.MeshStandardMaterial({ map: toTexture(hc), roughness: 0.7 })),
-        (p.x1 + p.x2) / 2, p.h / 2, (p.z1 + p.z2) / 2, -Math.atan2(p.z2 - p.z1, p.x2 - p.x1));
-      wall.castShadow = true;
+      const ry = -Math.atan2(p.z2 - p.z1, p.x2 - p.x1);
+      const cx = (p.x1 + p.x2) / 2, cz = (p.z1 + p.z2) / 2;
+      if (p.style === 'mesh') {
+        // grey see-through mesh panels on dark posts
+        const [mc, mx] = canvas(64, 64);
+        mx.fillStyle = 'rgba(120,124,128,0.55)'; mx.fillRect(0, 0, 64, 64);
+        mx.strokeStyle = 'rgba(70,74,78,0.9)'; mx.lineWidth = 3; mx.strokeRect(0, 0, 64, 64);
+        const t = toTexture(mc);
+        t.repeat.set(len / 2.4, 1);
+        piece(new THREE.PlaneGeometry(len, p.h), new THREE.MeshStandardMaterial({ map: t, transparent: true, side: THREE.DoubleSide, depthWrite: false }), cx, p.h / 2, cz, ry);
+        const postMat = new THREE.MeshStandardMaterial({ color: '#3a3d42' });
+        for (let s = 0; s <= len + 0.01; s += 2.4) {
+          const k = s / len;
+          piece(new THREE.BoxGeometry(0.12, p.h, 0.12), postMat, p.x1 + (p.x2 - p.x1) * k, p.h / 2, p.z1 + (p.z2 - p.z1) * k);
+        }
+      } else {
+        // printed hoarding: orange to yellow, food plates, dark diagonal band with the text
+        const [hc, hx] = canvas(1024, 96);
+        const g = hx.createLinearGradient(0, 0, 1024, 0);
+        g.addColorStop(0, '#ef8a1f'); g.addColorStop(0.5, '#f2b42a'); g.addColorStop(1, '#f2c230');
+        hx.fillStyle = g; hx.fillRect(0, 0, 1024, 96);
+        for (const [x, r] of [[70, 34], [190, 30], [840, 32], [960, 28]]) {
+          hx.fillStyle = '#f6f2ea'; hx.beginPath(); hx.arc(x, 50, r, 0, Math.PI * 2); hx.fill();
+          hx.fillStyle = '#c9772e'; hx.beginPath(); hx.arc(x, 50, r * 0.7, 0, Math.PI * 2); hx.fill();
+          hx.fillStyle = '#6d8f3a'; hx.beginPath(); hx.arc(x + r * 0.2, 44, r * 0.25, 0, Math.PI * 2); hx.fill();
+        }
+        hx.fillStyle = '#3a2f26';
+        hx.beginPath(); hx.moveTo(280, 96); hx.lineTo(330, 10); hx.lineTo(760, 10); hx.lineTo(720, 96); hx.closePath(); hx.fill();
+        hx.fillStyle = '#f7f1e3'; hx.font = '700 34px "Chakra Petch", sans-serif';
+        hx.fillText(p.text, 330, 64, 400);
+        const mat = new THREE.MeshStandardMaterial({ map: toTexture(hc), roughness: 0.7 });
+        const wall = piece(new THREE.BoxGeometry(len, p.h, 0.2), mat, cx, p.h / 2, cz, ry);
+        wall.castShadow = true;
+      }
+    } else if (p.kind === 'busshelter') {
+      // white shelter with a long rounded-end roof slab, square piers and timber benches; faces the road (+z)
+      const white = new THREE.MeshStandardMaterial({ color: '#ecebe7', roughness: 0.6 });
+      const wood = new THREE.MeshStandardMaterial({ color: '#b07a3e', roughness: 0.7 });
+      const L = p.len, D = 3.2, R = D / 2;
+      const roof = new THREE.Shape();
+      roof.moveTo(-L / 2, -R); roof.lineTo(L / 2 - R, -R);
+      roof.absarc(L / 2 - R, 0, R, -Math.PI / 2, Math.PI / 2, false);
+      roof.lineTo(-L / 2, R); roof.closePath();
+      const rg = new THREE.ExtrudeGeometry(roof, { depth: 0.45, bevelEnabled: false }).rotateX(Math.PI / 2);
+      piece(rg, white, p.x, 3.3, p.z);
+      for (const s of [-0.42, 0, 0.36]) piece(new THREE.BoxGeometry(1.6, 3.1, 0.6), white, p.x + s * L, 1.55, p.z - R + 0.4);
+      for (const s of [-0.22, 0.18]) {
+        piece(new THREE.BoxGeometry(L * 0.32, 0.12, 0.7), wood, p.x + s * L, 0.5, p.z - 0.6);
+        piece(new THREE.BoxGeometry(L * 0.3, 0.4, 0.5), wood, p.x + s * L, 0.25, p.z - 0.6);
+      }
+      piece(new THREE.BoxGeometry(L + 1, 0.2, D + 0.6), new THREE.MeshStandardMaterial({ color: '#cfccc5', roughness: 0.9 }), p.x, 0.1, p.z);
+    } else if (p.kind === 'roadtext') {
+      const [tc, tx] = canvas(256, 96);
+      tx.fillStyle = '#f4f4f0'; tx.textAlign = 'center'; tx.textBaseline = 'middle';
+      if (p.icon === 'bike') {
+        tx.strokeStyle = '#f4f4f0'; tx.lineWidth = 7;
+        for (const cx of [70, 186]) { tx.beginPath(); tx.arc(cx, 60, 26, 0, Math.PI * 2); tx.stroke(); }
+        tx.beginPath(); tx.moveTo(70, 60); tx.lineTo(110, 22); tx.lineTo(160, 22); tx.lineTo(186, 60);
+        tx.moveTo(110, 22); tx.lineTo(128, 60); tx.lineTo(160, 22); tx.stroke();
+      } else {
+        tx.font = '700 64px "Chakra Petch", sans-serif';
+        tx.fillText(p.text, 128, 52, 240);
+      }
+      const mark = new THREE.Mesh(new THREE.PlaneGeometry(p.w, p.d).rotateX(-Math.PI / 2),
+        new THREE.MeshStandardMaterial({ map: toTexture(tc), transparent: true, roughness: 0.8 }));
+      // read by drivers heading east (toward the entrance): text bottom faces west (+x)
+      mark.rotation.y = Math.PI / 2;
+      mark.position.set(p.x, 0.36, p.z);
+      world.add(mark);
     } else if (p.kind === 'stream') {
       for (let i = 1; i < p.pts.length; i++) {
         const [x1, z1] = p.pts[i - 1], [x2, z2] = p.pts[i];

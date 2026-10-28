@@ -36,6 +36,9 @@
 | `tour-pocket-park-sign.webp` | virtual tour (virtualtour.bu.ac.th) จากทางเท้าริมถนนสายกลาง มองไปทางใต้ | ป้าย WELCOME TO POCKET PARK, รั้วเหลือง NEW CAFETERIA COMING SOON |
 | `tour-pocket-park-lawn.webp` | virtual tour (virtualtour.bu.ac.th) | สนามหญ้า ลำธาร ศาลาไม้ระแนงสีส้ม สระด้านหลัง |
 | `tour-pocket-park-path.webp` | virtual tour (virtualtour.bu.ac.th) | ทางเดินแผ่นหิน ไฟทางเดิน ศาลาริมสระ |
+| `tour-bus-stop-hoarding.webp` | virtual tour (virtualtour.bu.ac.th) | ศาลาพักรถเมล์ รั้วตาข่ายเทา รั้วเหลือง NEW CAFETERIA IS COMING SOON |
+| `tour-bus-stop-road.webp` | virtual tour (virtualtour.bu.ac.th) มองตามถนนสายกลาง | ศาลาพักรถเมล์ ตัวอักษร BUS STOP เลนจักรยาน |
+| `feedback-closed-site-opposite-b4.png` | ภาพหน้าจอโมเดล กรอบเหลือง | พื้นที่ตรงข้าม B4 ที่ล้อมรั้วก่อสร้าง |
 
 ## ภาพที่ใช้แล้วแต่ยังไม่ได้อยู่ในโฟลเดอร์นี้
 

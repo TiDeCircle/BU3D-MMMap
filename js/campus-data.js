@@ -130,6 +130,8 @@ export const PLAZAS = [
   { kind: 'pavers', x: -82, z: -74, w: 46, d: 8 },
   // สวน Pocket Park ฝั่งใต้ของถนนสายกลาง ตรงข้ามลานโต๊ะม้านั่ง (สนามหญ้าโล่ง ต้นไม้วางเอง)
   { kind: 'lawn', x: 35, z: -98, w: 92, d: 64 },
+  // site = พื้นดินในเขตก่อสร้าง
+  { kind: 'site', x: -32.5, z: -90, w: 41, d: 40 },
   // ลานโต๊ะม้านั่งใต้ร่มไม้ ฝั่งตะวันตกของ B4
   { kind: 'pavers', x: 40, z: -33, w: 40, d: 34 },
 ];
@@ -171,7 +173,7 @@ export const SIGNS = [
 
 // ของประกอบฉากหน้ามหาวิทยาลัย
 // gate = ป้อมยามฝั่งใต้ของถนนทางเข้าและไม้กั้น, hedge = แนวพุ่มไม้, colonnade = แนวเสาเอียง, pylon = ป้ายเสาสีดำ, busstop = ศาลาพักผู้โดยสาร (len ตามแนว z),
-// canopy = ทางเดินมีหลังคา, carport = หลังคาโรงจอดรถ, picnic = โต๊ะม้านั่งใต้หลังคาเพิง, crosswalk = ทางม้าลาย, tree = ต้นไม้ที่วางเอง, parksign = ป้ายรูปลิ่ม, hoarding = รั้วชั่วคราวมีข้อความ, stream = ลำธาร, stepping = ทางเดินแผ่นหิน, bollards = ไฟทางเดินเสาเตี้ย, pergola = ศาลาไม้ระแนง, fence = รั้วตาข่าย, bleachers = อัฒจันทร์ (len ตามแนว z), umbrellas = ร่มผ้าใบเรียงตามแนว z, sculpture = รูปปั้นสีขาวหน้าทางเข้า A3
+// canopy = ทางเดินมีหลังคา, carport = หลังคาโรงจอดรถ, picnic = โต๊ะม้านั่งใต้หลังคาเพิง, crosswalk = ทางม้าลาย, tree = ต้นไม้ที่วางเอง, parksign = ป้ายรูปลิ่ม, hoarding = รั้วชั่วคราว (มีข้อความ หรือ style 'mesh' เป็นแผงตาข่าย), busshelter = ศาลาพักรถเมล์ (len ตามแนว x), roadtext = ตัวอักษรบนถนน, stream = ลำธาร, stepping = ทางเดินแผ่นหิน, bollards = ไฟทางเดินเสาเตี้ย, pergola = ศาลาไม้ระแนง, fence = รั้วตาข่าย, bleachers = อัฒจันทร์ (len ตามแนว z), umbrellas = ร่มผ้าใบเรียงตามแนว z, sculpture = รูปปั้นสีขาวหน้าทางเข้า A3
 export const PROPS = [
   { kind: 'gate', x: -694, z: -18, w: 12 },
   { kind: 'hedge', x1: -690, z1: -10, x2: -560, z2: -10, w: 1.6, h: 1.1 },
@@ -192,7 +194,16 @@ export const PROPS = [
 
   // ── สวน Pocket Park ──
   { kind: 'parksign', x: 58, z: -73, w: 11, h: 3, line1: 'WELCOME TO', line2: 'POCKET PARK' },
-  { kind: 'hoarding', x1: -12, z1: -70, x2: -12, z2: -114, h: 3, text: 'NEW CAFETERIA COMING SOON' },
+  // ── พื้นที่ก่อสร้างโรงอาหารใหม่ ตรงข้าม B4 ล้อมรั้วปิดไว้ ──
+  { kind: 'hoarding', x1: -38, z1: -70, x2: -12, z2: -70, h: 3, text: 'NEW CAFETERIA IS COMING SOON' },
+  { kind: 'hoarding', x1: -12, z1: -70, x2: -12, z2: -110, h: 3, text: 'NEW CAFETERIA IS COMING SOON' },
+  { kind: 'hoarding', x1: -53, z1: -70, x2: -38, z2: -70, h: 3, style: 'mesh' },
+  { kind: 'hoarding', x1: -53, z1: -70, x2: -53, z2: -110, h: 3, style: 'mesh' },
+  { kind: 'hoarding', x1: -53, z1: -110, x2: -12, z2: -110, h: 3, style: 'mesh' },
+  // ศาลาพักรถเมล์หน้ารั้ว และตัวอักษร BUS STOP กับสัญลักษณ์เลนจักรยานบนถนน
+  { kind: 'busshelter', x: -45, z: -67.2, len: 14 },
+  { kind: 'roadtext', x: -45, z: -62.6, text: 'BUS STOP', w: 9, d: 3 },
+  { kind: 'roadtext', x: -28, z: -62.6, icon: 'bike', w: 3, d: 2.2 },
   { kind: 'stream', w: 2, pts: [[4, -72], [16, -84], [10, -98], [24, -110], [44, -124], [58, -133]] },
   { kind: 'stepping', step: 2.6, pts: [[46, -68], [50, -82], [42, -96], [48, -110], [38, -122]] },
   { kind: 'bollards', step: 7, pts: [[49, -70], [53, -82], [45, -96], [51, -110], [41, -121]] },
@@ -372,6 +383,11 @@ export const BUILDINGS = [
     also: ['คณะวิศวกรรมศาสตร์ (School of Engineering)', 'ห้องปฏิบัติการวิศวกรรม'],
     desc: 'อาคาร 5 ชั้นของคณะวิศวกรรมศาสตร์ ทางทิศเหนือของถนนสายกลาง ชั้นล่าง 2 ชั้นเป็นผนังอิฐสีแดงส้ม ชั้นบนเป็นผนังขาวมีระเบียง ทางเข้ากลางมีหลังคาคอนกรีตทรงคางหมูบนเสาสีม่วง ด้านข้างมีบันไดสีม่วง ฝั่งตะวันตกเป็นลานโต๊ะม้านั่งใต้ร่มไม้และสระบัว' },
 
+  { num: 44, id: 'NEWCAF', zone: 'B', label: 'โรงอาหารใหม่ (กำลังก่อสร้าง)', category: 'service', shape: 'none',
+    nameTh: 'พื้นที่ก่อสร้างโรงอาหารใหม่', nameEn: 'New Cafeteria (under construction)',
+    x: -32.5, z: -90, w: 41, d: 40, h: 3, color: '#a88a62',
+    note: 'ไม่อยู่ในแผนผังทางการ เพิ่มจากภาพ virtual tour',
+    desc: 'พื้นที่ก่อสร้างโรงอาหารแห่งใหม่ ฝั่งใต้ของถนนสายกลาง ตรงข้ามอาคาร B4 ระหว่างอาคาร B1 กับสวน Pocket Park ล้อมรั้วชั่วคราว ด้านถนนเป็นรั้วสีเหลืองส้มเขียนว่า NEW CAFETERIA IS COMING SOON หน้ารั้วมีศาลาพักรถเมล์' },
   { num: 43, id: 'POCKET', zone: 'B', label: 'Pocket Park', category: 'culture', shape: 'none',
     nameTh: 'สวน Pocket Park', nameEn: 'Pocket Park',
     x: 35, z: -98, w: 80, d: 56, h: 4, color: '#6fae4f',
