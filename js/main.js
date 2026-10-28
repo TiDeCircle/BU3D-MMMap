@@ -612,6 +612,10 @@ function thaiFlagTexture() {
         const t = s / len;
         piece(post, white, p.x1 + (p.x2 - p.x1) * t, p.h / 2, p.z1 + (p.z2 - p.z1) * t - p.w / 2 + 0.2);
       }
+    } else if (p.kind === 'carport') {
+      piece(new THREE.BoxGeometry(p.w, 0.3, p.d), white, p.x, p.h, p.z);
+      const post = new THREE.BoxGeometry(0.25, p.h, 0.25);
+      for (let s = -p.w / 2 + 1; s <= p.w / 2 - 1; s += 6) piece(post, white, p.x + s, p.h / 2, p.z);
     } else if (p.kind === 'sculpture') {
       piece(new THREE.CylinderGeometry(2.2, 2.4, 0.6, 24), white, p.x, 0.3, p.z);
       const body = piece(new THREE.SphereGeometry(1.6, 24, 16), white, p.x, 2.2, p.z);

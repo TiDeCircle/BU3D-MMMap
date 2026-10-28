@@ -108,6 +108,8 @@ export const PLAZAS = [
   { kind: 'parking', x: -394, z: 12, w: 221, d: 14 },
   { kind: 'parking', x: -619, z: -198, w: 148, d: 28 },
   { kind: 'parking', x: 71, z: 5, w: 414, d: 18 },
+  // ลานจอดรถมีหลังคา ทางใต้ของอาคารกีฬาในร่ม ฝั่งตะวันตกของ UStore
+  { kind: 'parking', x: -150, z: -167, w: 50, d: 38 },
   { kind: 'parking', x: 150, z: -165, w: 28, d: 44 },
   { kind: 'parking', x: 753, z: -46, w: 40, d: 25 },
   { kind: 'parking', x: 1060, z: -178, w: 70, d: 140 },
@@ -147,7 +149,7 @@ export const SIGNS = [
 
 // ของประกอบฉากหน้ามหาวิทยาลัย
 // gate = ป้อมยามฝั่งใต้ของถนนทางเข้าและไม้กั้น, hedge = แนวพุ่มไม้, colonnade = แนวเสาเอียง, pylon = ป้ายเสาสีดำ, busstop = ศาลาพักผู้โดยสาร (len ตามแนว z),
-// canopy = ทางเดินมีหลังคา, sculpture = รูปปั้นสีขาวหน้าทางเข้า A3
+// canopy = ทางเดินมีหลังคา, carport = หลังคาโรงจอดรถ, sculpture = รูปปั้นสีขาวหน้าทางเข้า A3
 export const PROPS = [
   { kind: 'gate', x: -694, z: -18, w: 12 },
   { kind: 'hedge', x1: -690, z1: -10, x2: -560, z2: -10, w: 1.6, h: 1.1 },
@@ -158,6 +160,8 @@ export const PROPS = [
   { kind: 'busstop', x: -704, z: 8, len: 22 },
   { kind: 'canopy', x1: -690, z1: -26, x2: -560, z2: -26, w: 3, h: 3.4 },
   { kind: 'sculpture', x: -624, z: -93 },
+  // หลังคาโรงจอดรถสีขาว [x, z] กึ่งกลาง, w ตามแนว x, d ตามแนว z
+  { kind: 'carport', x: -150, z: -160, w: 44, d: 12, h: 3 },
 ];
 
 // เสาธงริมถนนทางเข้า ทางเหนือของมุมสระ (flag = มีธงชาติ)
