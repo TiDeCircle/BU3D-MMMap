@@ -392,7 +392,7 @@ for (const r of ROADS) {
   const mat = nightAware(new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9 }), 'color', '#ffffff', '#5a6170');
   roadMats.set(r, mat);
   const g = new THREE.PlaneGeometry(len, r.w).rotateX(-Math.PI / 2);
-  const m = flat(g, mat, (r.x1 + r.x2) / 2, r.highway ? -PLATFORM + 0.1 : 0.3, (r.z1 + r.z2) / 2);
+  const m = flat(g, mat, (r.x1 + r.x2) / 2, r.highway || r.outside ? -PLATFORM + 0.1 : 0.3, (r.z1 + r.z2) / 2);
   m.rotation.y = -Math.atan2(r.z2 - r.z1, r.x2 - r.x1);
 }
 // ทางลาดจากถนนใหญ่เข้าวิทยาเขต
@@ -575,12 +575,12 @@ function rooftopUnits(group, b, w, d, top, seed) {
   }
 }
 
-function accentBands(group, b, w, d, h, y0 = 0) {
+function accentBands(group, b, w, d, h, y0 = 0, ox = 0, oz = 0) {
   if (!b.accent) return;
   const mat = new THREE.MeshStandardMaterial({ color: b.accent, roughness: 0.6 });
   for (let y = y0 + FLOOR_H * 2; y < y0 + h - 1; y += FLOOR_H * 2) {
     const band = new THREE.Mesh(new THREE.BoxGeometry(w + 0.8, 0.9, d + 0.8), mat);
-    band.position.y = y;
+    band.position.set(ox, y, oz);
     add(group, band, b.id);
   }
 }
@@ -640,6 +640,50 @@ function solarTexture() {
 }
 const solarTex = solarTexture();
 
+function addSolar(group, x, z, w, d, y) {
+  const t = solarTex.clone();
+  t.repeat.set((w * 0.8) / 16, (d * 0.85) / 16);
+  t.needsUpdate = true;
+  const panels = new THREE.Mesh(
+    new THREE.PlaneGeometry(w * 0.8, d * 0.85).rotateX(-Math.PI / 2),
+    new THREE.MeshStandardMaterial({ map: t, roughness: 0.35, metalness: 0.3 }),
+  );
+  panels.position.set(x, y, z);
+  panels.receiveShadow = true;
+  group.add(panels);
+}
+
+// A3's west face: white wall with long horizontal slit windows and a glass stair band in the middle
+function slitTextures(wm, hm) {
+  const PX = 8;
+  const W = Math.min(2048, Math.round(wm * PX)), H = Math.round(hm * PX);
+  const [dc, d] = canvas(W, H);
+  const [lc, l] = canvas(W, H);
+  const r = mulberry32(41);
+  d.fillStyle = '#f2f3f4'; d.fillRect(0, 0, W, H);
+  l.fillStyle = '#000'; l.fillRect(0, 0, W, H);
+  const floor = FLOOR_H * PX;
+  const mid = W / 2, band = 9 * PX;
+  for (let y = floor * 0.45; y < H - floor * 0.3; y += floor) {
+    for (const side of [-1, 1]) {
+      const len = (0.18 + r() * 0.22) * W;
+      const x0 = side < 0 ? mid - band / 2 - len - r() * W * 0.1 : mid + band / 2 + r() * W * 0.1;
+      d.fillStyle = '#34444b';
+      d.fillRect(x0, y, len, 0.9 * PX);
+      if (r() < 0.6) { l.fillStyle = '#ffd48a'; l.fillRect(x0, y, len, 0.9 * PX); }
+    }
+  }
+  const g = d.createLinearGradient(mid - band / 2, 0, mid + band / 2, 0);
+  g.addColorStop(0, '#6f8f98'); g.addColorStop(0.5, '#9fbcc3'); g.addColorStop(1, '#6f8f98');
+  d.fillStyle = g; d.fillRect(mid - band / 2, 0, band, H);
+  d.strokeStyle = 'rgba(40,50,55,0.6)'; d.lineWidth = 2;
+  for (let y = 0; y < H; y += floor / 2) {
+    d.beginPath(); d.moveTo(mid - band / 2, y + floor / 2); d.lineTo(mid + band / 2, y); d.stroke();
+  }
+  l.fillStyle = '#d4e9ff'; l.globalAlpha = 0.5; l.fillRect(mid - band / 2, 0, band, H);
+  return { map: toTexture(dc), lit: toTexture(lc) };
+}
+
 // Curtain wall: glass grid crossed by the large white diagonal members seen on A3.
 // Lines are [u1, v1, u2, v2] across one face, v = 0 at the top.
 const CURTAIN_LINES = [
@@ -687,16 +731,15 @@ function curtainTextures(wm, hm, seed) {
   return { map: toTexture(dc), lit: toTexture(lc) };
 }
 
-function curtainBlock(group, b, x, z, w, d, h, lobby) {
-  const face = (wm, seed) => {
-    const t = curtainTextures(wm, h - lobby, seed);
-    return nightAware(new THREE.MeshStandardMaterial({
-      map: t.map, emissive: '#ffffff', emissiveMap: t.lit, emissiveIntensity: 0,
-      roughness: 0.18, metalness: 0.35, envMap: envTex, envMapIntensity: 0.8,
-    }), 'emissiveIntensity', 0, 0.9);
-  };
-  const fx = face(d, 31), fz = face(w, 32);
-  const body = new THREE.Mesh(new THREE.BoxGeometry(w, h - lobby, d), [fx, fx, roofMat, roofMat, fz, fz]);
+function curtainBlock(group, b, x, z, w, d, h, lobby, back) {
+  const face = (t) => nightAware(new THREE.MeshStandardMaterial({
+    map: t.map, emissive: '#ffffff', emissiveMap: t.lit, emissiveIntensity: 0,
+    roughness: 0.18, metalness: 0.35, envMap: envTex, envMapIntensity: 0.8,
+  }), 'emissiveIntensity', 0, 0.9);
+  const fx = face(curtainTextures(d, h - lobby, 31)), fz = face(curtainTextures(w, h - lobby, 32));
+  // box face order is +x, -x, +y, -y, +z, -z; +x is the west side
+  const west = back === 'slits' ? face(slitTextures(d, h - lobby)) : fx;
+  const body = new THREE.Mesh(new THREE.BoxGeometry(w, h - lobby, d), [west, fx, roofMat, roofMat, fz, fz]);
   body.position.set(x, lobby + (h - lobby) / 2, z);
   add(group, body, b.id);
   const lobbyBox = new THREE.Mesh(new THREE.BoxGeometry(w - 8, lobby, d - 8), facadeMaterial('#9cc0c4', w, lobby, true));
@@ -803,14 +846,18 @@ const builders = {
     }
   },
   gable(group, b) {
+    // halls: several gable roofs side by side across the depth, ridges along x
+    const n = b.halls || 1;
+    const hd = b.d / n;
     const hb = b.h * 0.55;
-    block(group, b, b.w, b.d, hb);
-    const m = new THREE.Mesh(
-      gableRoof(b.w, b.d, b.h - hb),
-      new THREE.MeshStandardMaterial({ color: b.roof || '#8c96a2', roughness: 0.75, flatShading: true }),
-    );
-    m.position.y = hb + 0.9;
-    add(group, m, b.id);
+    const roof = new THREE.MeshStandardMaterial({ color: b.roof || '#8c96a2', roughness: 0.75, flatShading: true });
+    for (let i = 0; i < n; i++) {
+      const oz = -b.d / 2 + hd * (i + 0.5);
+      block(group, b, b.w, hd - (n > 1 ? 2 : 0), hb, 0, 0, oz);
+      const m = new THREE.Mesh(gableRoof(b.w, hd - (n > 1 ? 2 : 0), b.h - hb), roof);
+      m.position.set(0, hb + 0.9, oz);
+      add(group, m, b.id);
+    }
   },
   pavilion(group, b) {
     const hb = b.h * 0.6;
@@ -874,26 +921,25 @@ const builders = {
     add(group, spire, b.id);
   },
   composite(group, b) {
-    // hand-placed parts: faceted masses (hull points), glass blocks and curtain-wall blocks [x, z, w, d, h]
+    // hand-placed parts, all as [x, z, w, d, h] around the building centre:
+    // hull (faceted mass from points), glass / curtain / box (walls with windows), solid (plain box, optional y0)
     for (const part of b.parts) {
-      if (part.hull) facetMass(group, b, part.hull);
-      if (part.glass || part.curtain) {
-        const [x, z, w, d, h] = part.glass || part.curtain;
-        if (part.curtain) curtainBlock(group, b, x, z, w, d, h, part.lobby || 0);
-        else block(group, { ...b, color: b.glassColor || '#86b3ad', glass: true }, w, d, h, 0, x, z);
-        if (part.solar) {
-          const t = solarTex.clone();
-          t.repeat.set((w * 0.8) / 16, (d * 0.85) / 16);
-          t.needsUpdate = true;
-          const panels = new THREE.Mesh(
-            new THREE.PlaneGeometry(w * 0.8, d * 0.85).rotateX(-Math.PI / 2),
-            new THREE.MeshStandardMaterial({ map: t, roughness: 0.35, metalness: 0.3 }),
-          );
-          panels.position.set(x, h + (part.curtain ? 1.45 : 1.05), z);
-          panels.receiveShadow = true;
-          group.add(panels);
-        }
+      if (part.hull) { facetMass(group, b, part.hull); continue; }
+      if (part.solid) {
+        const [x, z, w, d, h, y0 = 0] = part.solid;
+        const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshStandardMaterial({ color: part.color || b.color, roughness: 0.7 }));
+        m.position.set(x, y0 + h / 2, z);
+        add(group, m, b.id);
+        continue;
       }
+      const [x, z, w, d, h] = part.glass || part.curtain || part.box;
+      if (part.curtain) curtainBlock(group, b, x, z, w, d, h, part.lobby || 0, part.back);
+      else if (part.glass) block(group, { ...b, color: b.glassColor || '#86b3ad', glass: true }, w, d, h, 0, x, z);
+      else {
+        block(group, b, w, d, h, 0, x, z);
+        accentBands(group, b, w, d, h, 0, x, z);
+      }
+      if (part.solar) addSolar(group, x, z, w, d, h + (part.curtain ? 1.45 : 1.05));
     }
   },
   dorm(group, b) {
@@ -946,7 +992,7 @@ function blocked(x, z, pad) {
   const r = mulberry32(2026);
   const spots = [];
   for (const road of ROADS) {
-    if (road.highway || road.path) continue;
+    if (road.highway || road.outside || road.path) continue;
     const len = Math.hypot(road.x2 - road.x1, road.z2 - road.z1);
     const nx = -(road.z2 - road.z1) / len, nz = (road.x2 - road.x1) / len;
     for (let s = 10; s < len; s += 16) {
@@ -1003,7 +1049,7 @@ const lampHeadMat = nightAware(
       const off = road.w / 2 + 1.2;
       const x = road.x1 + ((road.x2 - road.x1) * s) / len + nx * off;
       const z = road.z1 + ((road.z2 - road.z1) * s) / len + nz * off;
-      spots.push([x, z, road.highway ? -PLATFORM : 0]);
+      spots.push([x, z, road.highway || road.outside ? -PLATFORM : 0]);
     }
   }
   const poles = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.15, 0.2, 7, 6), new THREE.MeshStandardMaterial({ color: '#4b5058' }), spots.length);
