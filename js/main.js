@@ -575,6 +575,22 @@ function facetPanelTexture() {
 }
 const panelTex = facetPanelTexture();
 
+function solarTexture() {
+  const [c, x] = canvas(256, 256);
+  x.fillStyle = '#c9ccd0';
+  x.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 4; i++) {
+    for (let j = 0; j < 8; j++) {
+      x.fillStyle = (i + j) % 3 ? '#27365a' : '#2d3e66';
+      x.fillRect(i * 64 + 3, j * 32 + 3, 58, 26);
+    }
+  }
+  x.strokeStyle = 'rgba(255,255,255,0.12)';
+  for (let i = 0; i < 256; i += 8) { x.beginPath(); x.moveTo(i, 0); x.lineTo(i, 256); x.stroke(); }
+  return toTexture(c);
+}
+const solarTex = solarTexture();
+
 // ConvexGeometry has no UVs; project each triangle onto the plane it faces most
 function addPlanarUVs(g, scale) {
   const p = g.attributes.position;
@@ -738,6 +754,18 @@ const builders = {
       if (part.glass) {
         const [x, z, w, d, h] = part.glass;
         block(group, { ...b, color: b.glassColor || '#86b3ad', glass: true }, w, d, h, 0, x, z);
+        if (part.solar) {
+          const t = solarTex.clone();
+          t.repeat.set((w * 0.8) / 16, (d * 0.85) / 16);
+          t.needsUpdate = true;
+          const panels = new THREE.Mesh(
+            new THREE.PlaneGeometry(w * 0.8, d * 0.85).rotateX(-Math.PI / 2),
+            new THREE.MeshStandardMaterial({ map: t, roughness: 0.35, metalness: 0.3 }),
+          );
+          panels.position.set(x, h + 1.05, z);
+          panels.receiveShadow = true;
+          group.add(panels);
+        }
       }
     }
   },
