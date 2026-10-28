@@ -1014,29 +1014,70 @@ const builders = {
     rooftopUnits(group, b, b.w, b.d, b.h, hashStr(b.id));
   },
   tower(group, b) {
-    // b.tower = [x, z, w, d] places the tower inside a wider footprint; b.podium = [x, z, w, d, h] adds a low base
+    // A5: one straight glass tower (b.tower = [x, z, w, d]) with a concrete core on its east side,
+    // slightly cantilevered glass bands on orange columns, a crown of white fins, and an optional
+    // low wing (b.podium = [x, z, w, d, h]) with red window bands beside it
     const [tx, tz, tw, td] = b.tower || [0, 0, b.w, b.d];
+    const orange = new THREE.MeshStandardMaterial({ color: b.accent || '#d4622f', roughness: 0.6 });
+    const white = new THREE.MeshStandardMaterial({ color: '#f1f2f3', roughness: 0.6 });
     if (b.podium) {
       const [px, pz, pw, pd, ph] = b.podium;
-      block(group, { ...b, glass: false, color: '#f1efea' }, pw, pd, ph, 0, px, pz);
+      const wing = { ...b, glass: false, color: '#f1efea', accent: b.podiumAccent || '#b4532f' };
+      block(group, wing, pw, pd, ph, 0, px, pz);
+      accentBands(group, wing, pw, pd, ph, 0, px, pz);
     }
-    const parts = [[0.4, 0, 0], [0.34, 2.5, -2], [0.26, -2, 2.5]];
-    let y = 0;
-    parts.forEach(([f, ox, oz], i) => {
-      ox += tx; oz += tz;
-      const hh = b.h * f, w = tw - i * 3, d = td - i * 3;
-      block(group, b, w, d, hh, y, ox, oz);
-      const band = new THREE.Mesh(
-        new THREE.BoxGeometry(w + 1.2, 1.4, d + 1.2),
-        new THREE.MeshStandardMaterial({ color: i % 2 ? '#3d8fd1' : b.accent, roughness: 0.6 }),
-      );
-      band.position.set(ox, y + hh, oz);
-      add(group, band, b.id);
-      y += hh + 0.5;
-    });
-    const fin = new THREE.Mesh(new THREE.BoxGeometry(2, 10, 8), new THREE.MeshStandardMaterial({ color: b.accent }));
-    fin.position.set(tx - 2, y + 5, tz + 2.5);
-    add(group, fin, b.id);
+    const lobby = 6, crown = 8;
+    block(group, { ...b, color: '#9cc0c4' }, tw - 4, td - 4, lobby, 0, tx, tz);
+    const col = new THREE.BoxGeometry(0.9, lobby, 0.9);
+    for (let x = -tw / 2 + 2; x <= tw / 2 - 2; x += 5) {
+      for (const s of [-1, 1]) {
+        const c = new THREE.Mesh(col, orange);
+        c.position.set(tx + x, lobby / 2, tz + s * (td / 2 - 1));
+        add(group, c, b.id);
+      }
+    }
+    const segs = 4, segH = (b.h - lobby - crown) / segs;
+    let y = lobby;
+    for (let i = 0; i < segs; i++) {
+      const grow = i % 2 ? 2.4 : 0;
+      block(group, b, tw + grow, td + grow, segH, y, tx, tz);
+      if (grow) {
+        // orange struts under the cantilevered band, along the two long faces
+        const strut = new THREE.BoxGeometry(0.8, 3, 0.8);
+        for (let x = -tw / 2; x <= tw / 2; x += 4) {
+          for (const s of [-1, 1]) {
+            const c = new THREE.Mesh(strut, orange);
+            c.position.set(tx + x, y + 1.5, tz + s * (td / 2 + grow / 2 - 0.5));
+            add(group, c, b.id);
+          }
+        }
+      }
+      y += segH + 0.9;
+    }
+    // crown of thin white fins around a recessed roof box
+    const roofBox = new THREE.Mesh(new THREE.BoxGeometry(tw - 6, crown - 2, td - 6), roofMat);
+    roofBox.position.set(tx, y + (crown - 2) / 2, tz);
+    add(group, roofBox, b.id);
+    const fin = new THREE.BoxGeometry(0.3, crown, 1.2);
+    for (let x = -tw / 2; x <= tw / 2; x += 1.6) {
+      for (const s of [-1, 1]) {
+        const f = new THREE.Mesh(fin, white);
+        f.position.set(tx + x, y + crown / 2, tz + s * td / 2);
+        add(group, f, b.id);
+      }
+    }
+    for (let z = -td / 2; z <= td / 2; z += 1.6) {
+      for (const s of [-1, 1]) {
+        const f = new THREE.Mesh(fin, white);
+        f.rotation.y = Math.PI / 2;
+        f.position.set(tx + s * tw / 2, y + crown / 2, tz + z);
+        add(group, f, b.id);
+      }
+    }
+    // concrete core on the east side (smaller x), rising above the crown
+    const core = new THREE.Mesh(new THREE.BoxGeometry(6, b.h + 3, td * 0.75), new THREE.MeshStandardMaterial({ color: '#c8c5be', roughness: 0.9 }));
+    core.position.set(tx - tw / 2 - 3, (b.h + 3) / 2, tz);
+    add(group, core, b.id);
   },
   round(group, b) {
     const r = b.w / 2;
