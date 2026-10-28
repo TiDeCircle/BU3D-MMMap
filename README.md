@@ -35,6 +35,7 @@ python3 -m http.server 8000
 | `css/style.css` | สไตล์ของหน้าเว็บ |
 | `js/campus-data.js` | **ข้อมูลวิทยาเขตทั้งหมด** อาคาร ถนน แหล่งน้ำ สนามกีฬา และมุมกล้อง |
 | `js/main.js` | ตัวสร้างฉาก 3 มิติ การควบคุม และ UI |
+| `assets/cars/` | โมเดลรถ (`.obj`) และ `colormap.png` จาก [Kenney Car Kit](https://kenney.nl/assets/car-kit) สัญญาอนุญาต CC0 |
 | `ref/` | ภาพอ้างอิง (ภาพโดรน, Street View) ที่ใช้เทียบตอนปั้นโมเดล ดูรายละเอียดใน `ref/README.md` |
 
 ## การแก้ไขข้อมูลอาคาร

@@ -520,7 +520,7 @@ body.night .zone-tag { color: rgba(255, 255, 255, 0.75); text-shadow: 0 0 8px rg
     right: max(var(--gap), env(safe-area-inset-right, 0px));
     bottom: calc(max(var(--gap), env(safe-area-inset-bottom, 0px)) + 64px);
     width: auto;
-    max-height: 46%;
+    max-height: 36%;
     padding: 14px;
   }
   body.list-open #info { display: none; }
