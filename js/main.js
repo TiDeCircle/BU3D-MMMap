@@ -490,6 +490,8 @@ for (const p of PLAZAS) {
     const t = toTexture(pc);
     t.repeat.set(p.w / 4, p.d / 4);
     mat = new THREE.MeshStandardMaterial({ map: t, roughness: 0.9 });
+  } else if (p.kind === 'red') {
+    mat = new THREE.MeshStandardMaterial({ color: '#c2452f', roughness: 0.9 });
   } else if (p.kind === 'site') {
     mat = new THREE.MeshStandardMaterial({ color: '#a88a62', roughness: 1 });
   } else if (p.kind === 'median') {
@@ -887,6 +889,47 @@ function thaiFlagTexture() {
         piece(new THREE.BoxGeometry(0.1, H * 0.8, 0.1), wood, p.x + i, H * 0.5, p.z - W / 2);
       }
       piece(new THREE.BoxGeometry(W - 1, 0.3, 0.8), wood, p.x, 0.45, p.z - W / 2 + 0.6);
+    } else if (p.kind === 'roundcourt') {
+      const [cc, cx] = canvas(256, 256);
+      cx.fillStyle = '#8a2f2a'; cx.beginPath(); cx.arc(128, 128, 126, 0, Math.PI * 2); cx.fill();
+      cx.strokeStyle = '#f4f4f0'; cx.lineWidth = 4;
+      cx.beginPath(); cx.arc(128, 128, 120, 0, Math.PI * 2); cx.stroke();
+      cx.beginPath(); cx.moveTo(8, 128); cx.lineTo(248, 128); cx.stroke();
+      for (const y of [40, 216]) { cx.beginPath(); cx.arc(128, y, 40, 0, Math.PI * 2); cx.stroke(); }
+      cx.beginPath(); cx.arc(128, 128, 22, 0, Math.PI * 2); cx.stroke();
+      const disc = new THREE.Mesh(new THREE.CircleGeometry(p.r, 48).rotateX(-Math.PI / 2),
+        new THREE.MeshStandardMaterial({ map: toTexture(cc), roughness: 0.8 }));
+      disc.position.set(p.x, 0.27, p.z);
+      disc.receiveShadow = true;
+      world.add(disc);
+      const pole = new THREE.MeshStandardMaterial({ color: '#e8e8e8' });
+      for (const s of [-1, 1]) {
+        piece(new THREE.CylinderGeometry(0.1, 0.1, 3, 6), pole, p.x, 1.5, p.z + s * (p.r - 0.5));
+        piece(new THREE.BoxGeometry(1.4, 1, 0.1), pole, p.x, 3, p.z + s * (p.r - 1));
+      }
+    } else if (p.kind === 'skatepark') {
+      const conc = new THREE.MeshStandardMaterial({ color: '#d4d2cc', roughness: 0.9 });
+      piece(new THREE.BoxGeometry(p.w, 1, p.d), conc, p.x, 0.5, p.z);
+      for (const [dx, dz, w, h] of [[-p.w / 2 + 3, 0, 4, 1.4], [p.w / 2 - 3, 2, 4, 1.2], [0, -p.d / 2 + 2, 8, 0.8], [3, 3, 6, 0.5]]) {
+        const ramp = new THREE.Mesh(new THREE.CylinderGeometry(h, h, w, 3, 1).rotateZ(Math.PI / 2).rotateX(Math.PI / 6), conc);
+        ramp.position.set(p.x + dx, 1, p.z + dz);
+        ramp.scale.set(1, 0.6, 1);
+        ramp.castShadow = true;
+        world.add(ramp);
+      }
+    } else if (p.kind === 'shelter') {
+      const roof = new THREE.Mesh(new THREE.CylinderGeometry(p.d / 2, p.d / 2, p.w, 24, 1, false, -Math.PI / 2, Math.PI).rotateZ(Math.PI / 2),
+        new THREE.MeshStandardMaterial({ color: '#c9ccd0', roughness: 0.5, metalness: 0.3, side: THREE.DoubleSide }));
+      roof.scale.set(1, 0.4, 1);
+      roof.position.set(p.x, p.h, p.z);
+      roof.castShadow = true;
+      world.add(roof);
+      piece(new THREE.BoxGeometry(p.w - 1, p.h, p.d - 1.5), new THREE.MeshStandardMaterial({ color: '#efe7da', roughness: 0.8 }), p.x, p.h / 2, p.z);
+    } else if (p.kind === 'floodlight') {
+      const mast = new THREE.MeshStandardMaterial({ color: '#9aa1a8', roughness: 0.5, metalness: 0.4 });
+      const head = nightAware(new THREE.MeshStandardMaterial({ color: '#eef0f2', emissive: '#fff4d6', emissiveIntensity: 0 }), 'emissiveIntensity', 0, 2.5);
+      piece(new THREE.CylinderGeometry(0.3, 0.5, p.h, 8), mast, p.x, p.h / 2, p.z);
+      piece(new THREE.BoxGeometry(3.4, 2.2, 0.6), head, p.x, p.h + 1, p.z);
     } else if (p.kind === 'goal') {
       const frame = new THREE.MeshStandardMaterial({ color: '#f4f4f2', roughness: 0.5 });
       for (const s of [-1, 1]) piece(new THREE.BoxGeometry(0.15, 2.4, 0.15), frame, p.x, 1.2, p.z + s * 3.6);
@@ -1933,11 +1976,33 @@ const builders = {
       }
     }
   },
+  grandstand(group, b) {
+    // west-side stand facing the track (-x): base block, raked seating, cantilevered roof on rear columns
+    const white = new THREE.MeshStandardMaterial({ color: b.color, roughness: 0.6 });
+    const seat = new THREE.MeshStandardMaterial({ color: '#8f96a0', roughness: 0.8 });
+    block(group, b, b.w, b.d, 4, 0, 0, 0);
+    for (let i = 0; i < 6; i++) {
+      const step = new THREE.Mesh(new THREE.BoxGeometry(b.w * 0.9 - i * 1.6, 0.8, b.d - 2), seat);
+      step.position.set(i * 0.8, 4.4 + i * 0.8, 0);
+      add(group, step, b.id);
+    }
+    const back = new THREE.Mesh(new THREE.BoxGeometry(1, b.h - 4, b.d), white);
+    back.position.set(b.w / 2 - 0.5, 4 + (b.h - 4) / 2, 0);
+    add(group, back, b.id);
+    const roof = new THREE.Mesh(new THREE.BoxGeometry(b.w + 4, 0.6, b.d + 2), white);
+    roof.position.set(-1.5, b.h, 0);
+    roof.rotation.z = 0.06;
+    add(group, roof, b.id);
+  },
   dorm(group, b) {
     for (const [dx, dz, w, d] of b.blocks) {
       const sub = new THREE.Group();
       sub.position.set(dx, 0, dz);
       block(sub, b, w, d, b.h);
+      // brick-orange base storey under the white floors
+      const base = new THREE.Mesh(new THREE.BoxGeometry(w + 0.4, FLOOR_H, d + 0.4), new THREE.MeshStandardMaterial({ color: b.accent || '#b5532f', roughness: 0.8 }));
+      base.position.y = FLOOR_H / 2;
+      sub.add(base);
       rooftopUnits(sub, b, w, d, b.h, hashStr(b.id) + dx + dz);
       sub.children.forEach((c) => { c.userData.bid = b.id; });
       group.add(sub);
@@ -1978,7 +2043,7 @@ function blocked(x, z, pad) {
   for (const p of [...PLAZAS, ...FIELDS]) if (Math.abs(x - p.x) < p.w / 2 + pad && Math.abs(z - p.z) < p.d / 2 + pad) return true;
   for (const p of PROPS) {
     if (p.kind === 'amphi' && Math.hypot(x - p.x, z - p.z) < Math.max(p.r + 4, ...p.lawnArcs) + pad) return true;
-    if ((p.kind === 'substation' || p.kind === 'shed' || p.kind === 'carport') && Math.abs(x - p.x) < p.w / 2 + pad && Math.abs(z - p.z) < p.d / 2 + pad) return true;
+    if ((p.kind === 'substation' || p.kind === 'shed' || p.kind === 'carport' || p.kind === 'skatepark' || p.kind === 'shelter') && Math.abs(x - p.x) < p.w / 2 + pad && Math.abs(z - p.z) < p.d / 2 + pad) return true;
   }
   return false;
 }
