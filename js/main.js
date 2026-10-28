@@ -465,6 +465,18 @@ for (const p of PLAZAS) {
     t.repeat.set(p.w / 20, p.d / 18);
     t.needsUpdate = true;
     mat = new THREE.MeshStandardMaterial({ map: t, roughness: 0.9 });
+  } else if (p.kind === 'pavers') {
+    const [pc, px] = canvas(64, 64);
+    px.fillStyle = '#a5978a'; px.fillRect(0, 0, 64, 64);
+    for (let y = 0; y < 64; y += 8) {
+      for (let x = (y / 8) % 2 ? -8 : 0; x < 64; x += 16) {
+        px.fillStyle = (x + y) % 3 ? '#b3a597' : '#9a8b7e';
+        px.fillRect(x + 1, y + 1, 14, 6);
+      }
+    }
+    const t = toTexture(pc);
+    t.repeat.set(p.w / 4, p.d / 4);
+    mat = new THREE.MeshStandardMaterial({ map: t, roughness: 0.9 });
   } else if (p.kind === 'strip') {
     mat = new THREE.MeshStandardMaterial({ color: '#4c5058', roughness: 0.9 });
   } else {
@@ -1222,6 +1234,95 @@ const builders = {
       const m = new THREE.Mesh(gableRoof(b.w, hd - (n > 1 ? 2 : 0), b.h - hb), roof);
       m.position.set(0, hb + 0.9, oz);
       add(group, m, b.id);
+    }
+  },
+  tiered(group, b) {
+    // B1: central 4-storey bay between 3-storey wings, an eave at every floor, a pillared porch
+    // and white colonnades curving out in front. The front faces +z (north).
+    const trim = new THREE.MeshStandardMaterial({ color: '#d9dce0', roughness: 0.7 });
+    const white = new THREE.MeshStandardMaterial({ color: '#e8eaec', roughness: 0.6 });
+    const dark = new THREE.MeshStandardMaterial({ color: '#2f343b', roughness: 0.5 });
+    const cw = 14, wingW = (b.w - cw) / 2 - 4, wingH = FLOOR_H * 3, d = b.d;
+    for (const s of [-1, 1]) {
+      const wx = s * (cw / 2 + wingW / 2);
+      block(group, b, wingW, d, wingH, 0, wx, 0);
+      addSolar(group, wx, 0, wingW, d, wingH + 0.25);
+      for (let f = 1; f <= 3; f++) {
+        const eave = new THREE.Mesh(new THREE.BoxGeometry(wingW + 4, 0.35, d + 4), trim);
+        eave.position.set(wx, f * FLOOR_H, 0);
+        add(group, eave, b.id);
+      }
+    }
+    // central bay, a little proud of the wings
+    block(group, b, cw, d + 2, b.h - 1, 0, 0, 0);
+    const roofSlab = new THREE.Mesh(new THREE.BoxGeometry(cw + 5, 0.4, d + 6), trim);
+    roofSlab.position.set(0, b.h - 0.2, 0);
+    add(group, roofSlab, b.id);
+    const fz = d / 2 + 1.05;
+    // arched window recess on the third floor: a short rectangle topped by a flat half-ellipse
+    const yArch = FLOOR_H * 2 + 0.3;
+    const recess = new THREE.Mesh(new THREE.BoxGeometry(7, 1.8, 0.4), dark);
+    recess.position.set(0, yArch + 0.9, fz);
+    add(group, recess, b.id);
+    const archShape = new THREE.Shape();
+    archShape.absellipse(0, 0, 3.5, 1.3, 0, Math.PI, false);
+    const arch = new THREE.Mesh(new THREE.ShapeGeometry(archShape, 16), dark);
+    arch.position.set(0, yArch + 1.8, fz + 0.21);
+    add(group, arch, b.id);
+    const balcony = new THREE.Mesh(new THREE.BoxGeometry(8, 0.3, 1.6), trim);
+    balcony.position.set(0, FLOOR_H * 2, fz + 0.6);
+    add(group, balcony, b.id);
+    for (let x = -3.6; x <= 3.6; x += 0.9) {
+      const post = new THREE.Mesh(new THREE.BoxGeometry(0.35, 1, 0.35), white);
+      post.position.set(x, FLOOR_H * 2 + 0.6, fz + 1.2);
+      add(group, post, b.id);
+    }
+    // porch: flat canopy on two square columns, with steps
+    const porch = new THREE.Mesh(new THREE.BoxGeometry(cw - 1, 0.7, 6), white);
+    porch.position.set(0, 6.4, fz + 3);
+    add(group, porch, b.id);
+    for (const s of [-1, 1]) {
+      const col = new THREE.Mesh(new THREE.BoxGeometry(1.3, 6.1, 1.3), white);
+      col.position.set(s * (cw / 2 - 1.5), 3.05, fz + 5.3);
+      add(group, col, b.id);
+    }
+    for (let i = 0; i < 4; i++) {
+      const step = new THREE.Mesh(new THREE.BoxGeometry(cw - 3, 0.3, 4 - i * 0.8), trim);
+      step.position.set(0, 0.15 + i * 0.3, fz + 2 + i * 0.4);
+      add(group, step, b.id);
+    }
+    // rooftop antennas
+    for (const s of [-1, 1]) {
+      const ant = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 4, 6), unitMat);
+      ant.position.set(s * (cw / 2 - 1), b.h + 2, -d / 2 + 2);
+      add(group, ant, b.id, false);
+    }
+    // curved white colonnades sweeping forward from the wings, with a hedge along each
+    const hedge = new THREE.MeshStandardMaterial({ color: '#4f7d33', roughness: 0.95 });
+    for (const s of [-1, 1]) {
+      const pts = [];
+      for (let i = 0; i <= 6; i++) {
+        const t = (i / 6) * (Math.PI / 2);
+        const r = b.armR || 14;
+        pts.push([s * (b.w / 2 - r * Math.cos(t)), d / 2 + r * Math.sin(t)]);
+      }
+      pts.forEach(([x, z], i) => {
+        const col = new THREE.Mesh(new THREE.BoxGeometry(0.8, 4.2, 0.8), white);
+        col.position.set(x, 2.1, z);
+        add(group, col, b.id);
+        if (!i) return;
+        const [px, pz] = pts[i - 1];
+        const len = Math.hypot(x - px, z - pz);
+        const ry = -Math.atan2(z - pz, x - px);
+        const beam = new THREE.Mesh(new THREE.BoxGeometry(len + 0.8, 0.8, 1.6), white);
+        beam.position.set((x + px) / 2, 4.6, (z + pz) / 2);
+        beam.rotation.y = ry;
+        add(group, beam, b.id);
+        const h = new THREE.Mesh(new THREE.BoxGeometry(len, 1, 1.2), hedge);
+        h.position.set((x + px) / 2, 0.5, (z + pz) / 2 + 1.4);
+        h.rotation.y = ry;
+        add(group, h, b.id);
+      });
     }
   },
   pavilion(group, b) {
