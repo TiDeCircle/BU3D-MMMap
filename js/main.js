@@ -549,42 +549,66 @@ function gableRoof(w, d, rise, overhang = 1.2) {
   return g;
 }
 
-function crystalGeometry(w, d, h, seed) {
-  const r = mulberry32(seed);
-  const pts = [];
-  const ring = (n, y, s, jitter) => {
-    const off = r() * Math.PI * 2;
-    for (let i = 0; i < n; i++) {
-      const a = off + (i / n) * Math.PI * 2 + (r() - 0.5) * jitter;
-      const k = s * (0.85 + r() * 0.2);
-      pts.push(new THREE.Vector3((Math.cos(a) * w * k) / 2, y, (Math.sin(a) * d * k) / 2));
-    }
-  };
-  ring(5, 0, 0.8, 0.7);
-  ring(6, h * (0.3 + r() * 0.2), 1.0, 0.9);
-  ring(3, h * (0.68 + r() * 0.12), 0.55, 1.1);
-  pts.push(new THREE.Vector3((r() - 0.3) * w * 0.35, h, (r() - 0.5) * d * 0.3));
-  return new ConvexGeometry(pts);
+// White-silver cladding with the long dark glass slits seen on ตึกเพชร
+function facetPanelTexture() {
+  const [c, x] = canvas(512, 512);
+  const g = x.createLinearGradient(0, 0, 512, 512);
+  g.addColorStop(0, '#f6f7f8');
+  g.addColorStop(1, '#d8dde1');
+  x.fillStyle = g;
+  x.fillRect(0, 0, 512, 512);
+  x.strokeStyle = 'rgba(110,120,128,0.3)';
+  x.lineWidth = 1.5;
+  for (let i = 0; i <= 512; i += 32) {
+    x.beginPath(); x.moveTo(i, 0); x.lineTo(i, 512); x.stroke();
+    x.beginPath(); x.moveTo(0, i); x.lineTo(512, i); x.stroke();
+  }
+  x.fillStyle = '#2d474c';
+  for (const [sx, sy, len, th] of [[30, 110, 320, 14], [150, 230, 330, 11], [40, 360, 230, 16], [280, 420, 200, 10], [260, 60, 210, 9]]) {
+    x.save();
+    x.translate(sx, sy);
+    x.rotate(-0.2);
+    x.fillRect(0, 0, len, th);
+    x.restore();
+  }
+  return toTexture(c);
+}
+const panelTex = facetPanelTexture();
+
+// ConvexGeometry has no UVs; project each triangle onto the plane it faces most
+function addPlanarUVs(g, scale) {
+  const p = g.attributes.position;
+  const uv = new Float32Array(p.count * 2);
+  const v = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
+  const e1 = new THREE.Vector3(), e2 = new THREE.Vector3();
+  for (let i = 0; i < p.count; i += 3) {
+    v.forEach((vec, k) => vec.fromBufferAttribute(p, i + k));
+    const n = e1.subVectors(v[1], v[0]).cross(e2.subVectors(v[2], v[0]));
+    const ax = Math.abs(n.x), ay = Math.abs(n.y), az = Math.abs(n.z);
+    v.forEach((vec, k) => {
+      const [u, w] = ay >= ax && ay >= az ? [vec.x, vec.z] : ax >= az ? [vec.z, vec.y] : [vec.x, vec.y];
+      uv[(i + k) * 2] = u * scale;
+      uv[(i + k) * 2 + 1] = w * scale;
+    });
+  }
+  g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
 }
 
-function crystal(group, b, w, d, h, color, ox, oz, seed) {
-  const g = crystalGeometry(w, d, h, seed);
+function facetMass(group, b, pts) {
+  const g = new ConvexGeometry(pts.map(([x, y, z]) => new THREE.Vector3(x, y, z)));
+  addPlanarUVs(g, 1 / 40);
   const mat = nightAware(
     new THREE.MeshStandardMaterial({
-      color, metalness: 0.45, roughness: 0.18, flatShading: true,
-      envMap: envTex, envMapIntensity: 1.2, emissive: '#9fd4ff', emissiveIntensity: 0,
+      color: b.color, map: panelTex, metalness: 0.35, roughness: 0.3, flatShading: true,
+      envMap: envTex, envMapIntensity: 0.9, emissive: '#9fd4ff', emissiveIntensity: 0,
     }),
-    'emissiveIntensity', 0, 0.35,
+    'emissiveIntensity', 0, 0.25,
   );
-  const m = new THREE.Mesh(g, mat);
-  m.position.set(ox, 0, oz);
-  add(group, m, b.id);
-  const edges = new THREE.LineSegments(
+  add(group, new THREE.Mesh(g, mat), b.id);
+  group.add(new THREE.LineSegments(
     new THREE.EdgesGeometry(g, 1),
-    new THREE.LineBasicMaterial({ color: '#4d5a60', transparent: true, opacity: 0.55 }),
-  );
-  edges.position.copy(m.position);
-  group.add(edges);
+    new THREE.LineBasicMaterial({ color: '#4d5a60', transparent: true, opacity: 0.5 }),
+  ));
 }
 
 const builders = {
@@ -707,24 +731,15 @@ const builders = {
     spire.position.y = y + (b.h - y) / 2;
     add(group, spire, b.id);
   },
-  diamond(group, b) {
-    // ตึกเพชร: glass core wrapped by low, angular white-silver shells
-    const core = { ...b, color: b.glassColor || '#7fa8a0', glass: true };
-    block(group, core, b.w * 0.62, b.d * 0.8, b.h * 0.72);
-    const r = mulberry32(hashStr(b.id));
-    const n = 5;
-    for (let i = 0; i < n; i++) {
-      const dz = -b.d / 2 + (b.d / n) * (i + 0.5) + (r() - 0.5) * 6;
-      const sw = b.w * (0.75 + r() * 0.3);
-      const sd = (b.d / n) * (1.25 + r() * 0.35);
-      const sh = b.h * (0.6 + r() * 0.4);
-      crystal(group, b, sw, sd, sh, b.color, (r() - 0.5) * b.w * 0.2, dz, hashStr(b.id) + i * 7);
+  composite(group, b) {
+    // hand-placed parts: faceted masses (hull points) and glass blocks [x, z, w, d, h]
+    for (const part of b.parts) {
+      if (part.hull) facetMass(group, b, part.hull);
+      if (part.glass) {
+        const [x, z, w, d, h] = part.glass;
+        block(group, { ...b, color: b.glassColor || '#86b3ad', glass: true }, w, d, h, 0, x, z);
+      }
     }
-  },
-  crystal(group, b) {
-    crystal(group, b, b.w * 0.55, b.d * 0.6, b.h, b.color, -b.w * 0.15, b.d * 0.1, hashStr(b.id) + 1);
-    crystal(group, b, b.w * 0.4, b.d * 0.45, b.h * 0.7, '#9fd0f0', b.w * 0.25, -b.d * 0.15, hashStr(b.id) + 2);
-    crystal(group, b, b.w * 0.3, b.d * 0.3, b.h * 0.5, b.color, b.w * 0.28, b.d * 0.3, hashStr(b.id) + 3);
   },
   dorm(group, b) {
     for (const [dx, dz, w, d] of b.blocks) {

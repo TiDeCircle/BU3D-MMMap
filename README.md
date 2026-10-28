@@ -43,7 +43,7 @@ python3 -m http.server 8000
 - แกน `x`: ค่าน้อย = ทิศตะวันออก (ทางเข้าติดถนนพหลโยธิน), ค่ามาก = ทิศตะวันตก (ท้ายมหาวิทยาลัย)
 - แกน `z`: ค่าบวก = ทิศเหนือ
 - `w`, `d`, `h` = ความกว้าง (แกน x), ความลึก (แกน z) และความสูงของอาคาร
-- `shape` = รูปทรง: `box`, `diamond`, `crystal`, `tower`, `round`, `barrel`, `gable`, `pavilion`, `thai`, `shrine`, `dorm`, `none`
+- `shape` = รูปทรง: `box`, `composite` (กำหนดจุดรูปทรงเหลี่ยมเอง ใช้กับตึกเพชร), `tower`, `round`, `barrel`, `gable`, `pavilion`, `thai`, `shrine`, `dorm`, `none`
 
 ## ที่มาของข้อมูลและข้อจำกัด
 

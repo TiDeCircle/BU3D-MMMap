@@ -83,20 +83,31 @@ export const SIGNS = [
 ];
 
 // num = หมายเลขบนแผนผังทางการ
-// shape: box | diamond | crystal | tower | round | barrel | gable | pavilion | thai | shrine | dorm | none
+// shape: box | composite | tower | round | barrel | gable | pavilion | thai | shrine | dorm | none
 export const BUILDINGS = [
   // ───── โซน A ─────
   { num: 1, id: 'A1', zone: 'A', category: 'academic', shape: 'box',
     nameTh: 'อาคาร A1', nameEn: 'Building A1',
     x: -545, z: -40, w: 34, d: 34, h: 40, color: '#8d96a3', glass: true,
     desc: 'อาคารสูงผนังกระจกสีเทา อยู่ทางทิศเหนือของตึกเพชร A3 มองเห็นได้จากถนนพหลโยธิน' },
-  { num: 2, id: 'A2', zone: 'A', category: 'academic', shape: 'crystal',
+  // ตึกเพชรมองจากถนนพหลโยธิน: ก้อนเหลี่ยมเตี้ยด้านซ้าย (A2, ทิศใต้), อาคารกระจกสูงตรงกลาง
+  // และก้อนเหลี่ยมใหญ่ทรงบนกว้างล่างแคบด้านขวา (A3, ทิศเหนือ) จุด hull เป็นพิกัดเทียบกับกึ่งกลางอาคาร
+  { num: 2, id: 'A2', zone: 'A', category: 'academic', shape: 'composite',
     nameTh: 'อาคาร A2', nameEn: 'Building A2',
-    x: -664, z: -20, w: 30, d: 34, h: 12, color: '#f2f4f7',
-    desc: 'อาคารรูปทรงเหลี่ยมมุมสีขาวบริเวณทางเข้า ติดกับตึกเพชร A3' },
-  { num: 3, id: 'A3', zone: 'A', label: 'A3 Diamond Hall', category: 'academic', shape: 'diamond',
+    x: -625, z: -140, w: 54, d: 44, h: 18, color: '#eef1f3',
+    parts: [
+      { hull: [[-25, 0, -21], [25, 0, -21], [25, 0, 21], [-25, 0, 21], [-22, 7, -19], [20, 9, -21],
+        [-18, 18, 17], [22, 15, 21], [-27, 10, 6]] },
+    ],
+    desc: 'ส่วนหนึ่งของกลุ่มอาคารตึกเพชร ก้อนอาคารเหลี่ยมสีขาวเงินฝั่งทิศใต้ หลังคาลาดสูงขึ้นไปทางอาคารกระจกตรงกลาง' },
+  { num: 3, id: 'A3', zone: 'A', label: 'A3 Diamond Hall', category: 'academic', shape: 'composite',
     nameTh: 'อาคาร A3', nameEn: 'Building A3 (Diamond Hall)',
-    x: -615, z: -95, w: 70, d: 120, h: 28, color: '#eef1f3', glassColor: '#7fa8a0',
+    x: -615, z: -70, w: 64, d: 80, h: 32, color: '#eef1f3', glassColor: '#86b3ad',
+    parts: [
+      { glass: [14, -24, 28, 22, 32] },
+      { hull: [[-16, 0, 0], [10, 0, -6], [14, 0, 26], [-12, 0, 30], [-30, 26, -16], [22, 24, -14],
+        [24, 26, 40], [-28, 24, 42], [-34, 12, 14]] },
+    ],
     desc: 'ตึกเพชร อาคารสัญลักษณ์ของวิทยาเขตรังสิต ผิวอาคารเป็นแผงเหลี่ยมสีขาวเงินสลับกระจก หันหน้าออกถนนพหลโยธิน มีสนามหญ้า สระน้ำ และป้าย BANGKOK UNIVERSITY อยู่ด้านหน้า รู้จักกันในชื่อไดมอนด์ ฮอลล์' },
   { num: 4, id: 'A4', zone: 'A', category: 'academic', shape: 'box',
     nameTh: 'อาคาร A4', nameEn: 'Building A4',
