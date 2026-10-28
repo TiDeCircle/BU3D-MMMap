@@ -477,6 +477,8 @@ for (const p of PLAZAS) {
     const t = toTexture(pc);
     t.repeat.set(p.w / 4, p.d / 4);
     mat = new THREE.MeshStandardMaterial({ map: t, roughness: 0.9 });
+  } else if (p.kind === 'median') {
+    mat = new THREE.MeshStandardMaterial({ color: '#6fae4f', roughness: 0.95 });
   } else if (p.kind === 'strip') {
     mat = new THREE.MeshStandardMaterial({ color: '#4c5058', roughness: 0.9 });
   } else {
@@ -626,11 +628,15 @@ function thaiFlagTexture() {
   for (const p of PROPS) {
     if (p.kind === 'gate') {
       // one booth on the south side under a flat roof, with a barrier arm across the lane
-      const bz = p.z - p.w / 2 - 2.5;
-      piece(new THREE.BoxGeometry(3, 2.8, 3.4), new THREE.MeshStandardMaterial({ color: '#c9ccd0', roughness: 0.6 }), p.x, 1.4, bz);
-      piece(new THREE.BoxGeometry(5, 0.3, 6), white, p.x, 3.4, bz);
-      for (const s of [-1, 1]) piece(new THREE.BoxGeometry(0.25, 3.4, 0.25), white, p.x + s * 2.2, 1.7, bz + 2.6);
-      const arm = piece(new THREE.BoxGeometry(0.25, 0.25, p.w - 1), new THREE.MeshStandardMaterial({ color: '#e0b63a' }), p.x - 1.8, 1.1, p.z);
+      // axis 'z' = the lane runs north-south: booth on its east side, arm across x
+      const alongZ = p.axis === 'z';
+      const bx = alongZ ? p.x - p.w / 2 - 2.5 : p.x, bz = alongZ ? p.z : p.z - p.w / 2 - 2.5;
+      piece(new THREE.BoxGeometry(3, 2.8, 3.4), new THREE.MeshStandardMaterial({ color: '#c9ccd0', roughness: 0.6 }), bx, 1.4, bz);
+      piece(new THREE.BoxGeometry(alongZ ? 6 : 5, 0.3, alongZ ? 5 : 6), white, bx, 3.4, bz);
+      const armMat = new THREE.MeshStandardMaterial({ color: '#e0b63a' });
+      const arm = alongZ
+        ? piece(new THREE.BoxGeometry(p.w - 1, 0.25, 0.25), armMat, p.x, 1.1, p.z + 1.8)
+        : piece(new THREE.BoxGeometry(0.25, 0.25, p.w - 1), armMat, p.x - 1.8, 1.1, p.z);
       arm.castShadow = false;
     } else if (p.kind === 'hedge') {
       const len = Math.hypot(p.x2 - p.x1, p.z2 - p.z1);
@@ -719,6 +725,26 @@ function thaiFlagTexture() {
       for (let z = p.z1; z <= p.z2 + 0.01; z += p.step) {
         piece(new THREE.ConeGeometry(2.2, 1.2, 8, 1, true), cloth, p.x, 3.6, z);
         piece(new THREE.CylinderGeometry(0.06, 0.06, 3.4, 6), white, p.x, 1.7, z);
+      }
+    } else if (p.kind === 'picnic') {
+      const metal = new THREE.MeshStandardMaterial({ color: '#5a5f66', roughness: 0.6 });
+      const top = new THREE.MeshStandardMaterial({ color: '#b9b4ab', roughness: 0.8 });
+      for (let i = 0; i < p.cols; i++) {
+        for (let j = 0; j < p.rows; j++) {
+          const x = p.x - (p.cols - 1) * 5 + i * 10, z = p.z - (p.rows - 1) * 5 + j * 10;
+          piece(new THREE.BoxGeometry(5.5, 0.15, 6), metal, x, 2.9, z);
+          piece(new THREE.CylinderGeometry(0.08, 0.08, 2.9, 6), metal, x, 1.45, z);
+          piece(new THREE.BoxGeometry(2.4, 0.12, 0.9), top, x, 0.75, z);
+          for (const s of [-1, 1]) piece(new THREE.BoxGeometry(2.4, 0.1, 0.35), top, x, 0.45, z + s * 0.9);
+        }
+      }
+    } else if (p.kind === 'crosswalk') {
+      const stripe = new THREE.MeshStandardMaterial({ color: '#f4f4f0', roughness: 0.8 });
+      for (let s = -p.w / 2; s <= p.w / 2; s += 1.2) {
+        const m = new THREE.Mesh(new THREE.PlaneGeometry(0.6, p.len).rotateX(-Math.PI / 2), stripe);
+        m.position.set(p.x + s, 0.34, p.z);
+        m.receiveShadow = true;
+        world.add(m);
       }
     } else if (p.kind === 'carport') {
       piece(new THREE.BoxGeometry(p.w, 0.3, p.d), white, p.x, p.h, p.z);
@@ -936,6 +962,33 @@ function shingleTexture(wm, hm, mural) {
     x.fillStyle = '#5fa3a0'; x.fillRect(W * 0.68, H * 0.42, 6 * PX, H * 0.58);
     x.strokeStyle = '#dfeeed'; x.lineWidth = 2;
     for (let i = 1; i < 4; i++) { x.beginPath(); x.moveTo(W * 0.68 + i * 1.5 * PX, H * 0.42); x.lineTo(W * 0.68 + i * 1.5 * PX, H); x.stroke(); }
+  }
+  return toTexture(c);
+}
+
+// Red-orange brick wall with recessed windows and white sills
+function brickTexture(wm, hm) {
+  const PX = 10;
+  const W = Math.round(wm * PX), H = Math.round(hm * PX);
+  const [c, x] = canvas(W, H);
+  const r = mulberry32(Math.round(wm * 13 + hm));
+  x.fillStyle = '#9c4a33'; x.fillRect(0, 0, W, H);
+  const bh = 0.25 * PX, bw = 0.6 * PX;
+  for (let y = 0, i = 0; y < H; y += bh, i++) {
+    for (let xx = (i % 2) * bw / 2 - bw; xx < W; xx += bw) {
+      const t = 0.85 + r() * 0.3;
+      x.fillStyle = `rgb(${Math.round(196 * t)},${Math.round(98 * t)},${Math.round(66 * t)})`;
+      x.fillRect(xx + 0.5, y + 0.5, bw - 1, bh - 1);
+    }
+  }
+  const floor = FLOOR_H * PX, bay = 4 * PX;
+  for (let y = 0; y < H - 1; y += floor) {
+    for (let xx = bay * 0.5; xx < W - bay * 0.3; xx += bay) {
+      x.fillStyle = '#2d3238';
+      x.fillRect(xx, y + floor * 0.3, 1.4 * PX, floor * 0.45);
+      x.fillStyle = '#eceae6';
+      x.fillRect(xx - 0.2 * PX, y + floor * 0.75, 1.8 * PX, 0.25 * PX);
+    }
   }
   return toTexture(c);
 }
@@ -1236,6 +1289,65 @@ const builders = {
       add(group, m, b.id);
     }
   },
+  brickbase(group, b) {
+    // B4: two brick storeys under three white storeys with balconies, a flared concrete hood on
+    // purple columns over the entrance, and a purple stair tower on the west end. Front faces -z (south).
+    const purple = new THREE.MeshStandardMaterial({ color: '#7b5ea7', roughness: 0.6 });
+    const concrete = new THREE.MeshStandardMaterial({ color: '#b9b8b3', roughness: 0.85, side: THREE.DoubleSide });
+    const baseH = FLOOR_H * 2;
+    const brick = (wm) => nightAware(new THREE.MeshStandardMaterial({ map: brickTexture(wm, baseH), roughness: 0.9 }), 'color', '#ffffff', '#7a808c');
+    const bx = brick(b.d), bz = brick(b.w);
+    const base = new THREE.Mesh(new THREE.BoxGeometry(b.w, baseH, b.d), [bx, bx, roofMat, roofMat, bz, bz]);
+    base.position.y = baseH / 2;
+    add(group, base, b.id);
+    block(group, b, b.w - 1, b.d - 1, b.h - baseH, baseH, 0, 0);
+    // balcony slabs and rails on the upper floors of the front
+    const slab = new THREE.MeshStandardMaterial({ color: '#f6f6f4', roughness: 0.6 });
+    const rail = new THREE.MeshStandardMaterial({ color: '#8f969d', roughness: 0.5, metalness: 0.4 });
+    for (let f = 0; f < 3; f++) {
+      const y = baseH + f * FLOOR_H;
+      const s = new THREE.Mesh(new THREE.BoxGeometry(b.w - 2, 0.3, 1.6), slab);
+      s.position.set(0, y + 0.15, -b.d / 2 - 0.8);
+      add(group, s, b.id);
+      const r = new THREE.Mesh(new THREE.BoxGeometry(b.w - 2, 1, 0.06), rail);
+      r.position.set(0, y + 0.8, -b.d / 2 - 1.55);
+      add(group, r, b.id);
+    }
+    // flared hood over the entrance: an open, square frustum turned to face the street
+    const hood = new THREE.Mesh(new THREE.CylinderGeometry(9, 5, 4.5, 4, 1, true, Math.PI / 4), concrete);
+    hood.scale.set(1, 1, 0.55);
+    hood.position.set(0, baseH + 0.4, -b.d / 2 - 2.6);
+    add(group, hood, b.id);
+    for (const s of [-1, 1]) {
+      const col = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, baseH - 1.8, 12), purple);
+      col.position.set(s * 2.2, (baseH - 1.8) / 2, -b.d / 2 - 2.5);
+      add(group, col, b.id);
+    }
+    for (let i = 0; i < 3; i++) {
+      const step = new THREE.Mesh(new THREE.BoxGeometry(9 - i, 0.25, 4.5 - i), concrete);
+      step.position.set(0, 0.12 + i * 0.25, -b.d / 2 - 2.5);
+      add(group, step, b.id);
+    }
+    // purple stair tower on the west end (+x)
+    const stair = new THREE.Mesh(new THREE.BoxGeometry(6, b.h + 1.5, 9), purple);
+    stair.position.set(b.w / 2 + 3, (b.h + 1.5) / 2, b.d / 2 - 6);
+    add(group, stair, b.id);
+    // School of Engineering banner by the entrance
+    const [cc, cx] = canvas(64, 256);
+    cx.fillStyle = '#f7f7f5'; cx.fillRect(0, 0, 64, 256);
+    cx.fillStyle = '#c0243c'; cx.fillRect(0, 190, 64, 66);
+    cx.save(); cx.translate(40, 180); cx.rotate(-Math.PI / 2);
+    cx.fillStyle = '#2b2b2b'; cx.font = '600 15px "Chakra Petch", sans-serif';
+    cx.fillText('SCHOOL OF ENGINEERING', 0, 0);
+    cx.restore();
+    const banner = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 5.5), new THREE.MeshStandardMaterial({ map: toTexture(cc), side: THREE.DoubleSide }));
+    banner.position.set(-b.w / 2 + 12, 3.6, -b.d / 2 - 4);
+    banner.rotation.y = Math.PI + 0.35;
+    add(group, banner, b.id, false);
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 6.6, 6), rail);
+    pole.position.set(-b.w / 2 + 11.3, 3.3, -b.d / 2 - 4);
+    add(group, pole, b.id, false);
+  },
   tiered(group, b) {
     // B1: central 4-storey bay between 3-storey wings, an eave at every floor, a pillared porch
     // and white colonnades curving out in front. The front faces +z (north).
@@ -1471,6 +1583,7 @@ function blocked(x, z, pad) {
       }
     }
   }
+  for (const p of PROPS) if (p.kind === 'tree') spots.push([p.x, p.z, 1.4]);
   for (let i = 0; i < 18000 && spots.length < 2800; i++) {
     const B = OUTLINE_BOUNDS;
     const x = B.minX + r() * (B.maxX - B.minX), z = B.minZ + r() * (B.maxZ - B.minZ);
