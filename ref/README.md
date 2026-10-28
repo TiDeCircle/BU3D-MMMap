@@ -44,6 +44,11 @@
 | `streetview-c6-library-entrance.webp` | Google Street View (ก.พ. 2022) | ทางเข้าหอสมุดด้านใต้ หลังคายื่นบนเสาเรียว ครีบบังแดด วงเลี้ยวรับส่ง |
 | `streetview-bui-east.webp` | Google Street View (ก.พ. 2022) | ทางเข้า BUI ด้านตะวันออก ผนังโค้ง ป้าย BUI สระน้ำตื้น |
 | `streetview-c-zone-road.webp` | Google Street View (ก.พ. 2022) | ถนนเข้าโซน C ป้ายโซน C |
+| `satellite-zone-c.webp` | Google Maps ดาวเทียมมุมบน ทิศเหนือขึ้น (ราว 0.55 ม./พิกเซล) | **ใช้วางโซน C** ถนน หอคอย C2 ลานวงกลม อาคารรอบ ๆ แนวบริการด้านเหนือ |
+| `drone-c2-north-strip.webp` | virtual tour ภาพโดรน | หอคอย C2, สถานีไฟฟ้าย่อย, โรงหลังคาแดง, อาคาร C10 หลังคาโซลาร์ |
+| `drone-zone-c-looking-west.webp` | virtual tour ภาพโดรนมองไปทางทิศตะวันตก | ภาพรวมกลุ่ม C2 ลานวงกลม สนามหญ้า ลานจอดหลังคาโซลาร์ |
+| `drone-c2-courtyard.webp` | virtual tour ภาพโดรน | ลานวงกลมจมระดับ ทางเดินมีหลังคาโค้ง ขั้นสนามหญ้าโค้ง อาคารหลังคาโซลาร์ |
+| `drone-solar-parking-field.webp` | virtual tour ภาพโดรน | ลานจอดหลังคาโซลาร์ 5 แถว สระน้ำ สนามฟุตบอล สนามบาส |
 
 ## ภาพที่ใช้แล้วแต่ยังไม่ได้อยู่ในโฟลเดอร์นี้
 

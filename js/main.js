@@ -457,6 +457,7 @@ for (const r of ROADS) {
 }
 
 const parkTex = parkingTexture();
+const solarTex = solarTexture();
 for (const p of PLAZAS) {
   if (p.kind === 'lawn') continue;
   let mat;
@@ -874,9 +875,93 @@ function thaiFlagTexture() {
       }
       piece(new THREE.BoxGeometry(W - 1, 0.3, 0.8), wood, p.x, 0.45, p.z - W / 2 + 0.6);
     } else if (p.kind === 'carport') {
-      piece(new THREE.BoxGeometry(p.w, 0.3, p.d), white, p.x, p.h, p.z);
+      if (p.solar) {
+        const t = solarTex.clone();
+        t.repeat.set(p.w / 16, p.d / 16);
+        t.needsUpdate = true;
+        piece(new THREE.BoxGeometry(p.w, 0.25, p.d), [0, 1, 2, 3, 4, 5].map((i) =>
+          new THREE.MeshStandardMaterial({ color: i === 2 ? '#ffffff' : '#7d838a', map: i === 2 ? t : null, roughness: 0.4, metalness: 0.3 })), p.x, p.h, p.z);
+      } else {
+        piece(new THREE.BoxGeometry(p.w, 0.3, p.d), white, p.x, p.h, p.z);
+      }
       const post = new THREE.BoxGeometry(0.25, p.h, 0.25);
       for (let s = -p.w / 2 + 1; s <= p.w / 2 - 1; s += 6) piece(post, white, p.x + s, p.h / 2, p.z);
+    } else if (p.kind === 'amphi') {
+      // sunken round court: terraces rising outward, a covered ring arcade, and curved lawn steps beyond
+      const grass = nightAware(new THREE.MeshStandardMaterial({ color: '#7cb65a', roughness: 0.95 }), 'color', '#7cb65a', '#4e7356');
+      const stone = new THREE.MeshStandardMaterial({ color: '#d9d6cf', roughness: 0.9 });
+      const rings = [[0, 7, grass, 0.05], [7, 9, stone, 0.3], [9, 12.5, grass, 0.55], [12.5, 14, stone, 0.8], [14, 17.5, grass, 1.05], [17.5, p.r, stone, 1.3]];
+      for (const [r0, r1, mat, h] of rings) {
+        const g = r0 ? new THREE.CylinderGeometry(r1, r1, h, 64, 1, true) : new THREE.CylinderGeometry(r1, r1, h, 64);
+        const top = new THREE.Mesh(new THREE.RingGeometry(r0, r1, 64).rotateX(-Math.PI / 2), mat);
+        top.position.set(p.x, h, p.z);
+        top.receiveShadow = true;
+        world.add(top);
+        piece(g, stone, p.x, h / 2, p.z);
+      }
+      // ring arcade: roof band on slender columns, open toward the lawn steps
+      const roof = new THREE.Mesh(new THREE.RingGeometry(p.r, p.r + 3.5, 64, 1, p.arcadeFrom, p.arcadeLen).rotateX(-Math.PI / 2),
+        new THREE.MeshStandardMaterial({ color: '#f2f2f0', roughness: 0.6, side: THREE.DoubleSide }));
+      roof.position.set(p.x, 4.4, p.z);
+      roof.castShadow = true;
+      world.add(roof);
+      const fascia = new THREE.Mesh(new THREE.CylinderGeometry(p.r + 3.5, p.r + 3.5, 1, 64, 1, true, Math.PI / 2 + p.arcadeFrom, p.arcadeLen),
+        new THREE.MeshStandardMaterial({ color: '#f2f2f0', side: THREE.DoubleSide }));
+      fascia.position.set(p.x, 4.2, p.z);
+      world.add(fascia);
+      for (let a = p.arcadeFrom; a <= p.arcadeFrom + p.arcadeLen + 0.01; a += 0.18) {
+        for (const rr of [p.r + 0.4, p.r + 3.1]) {
+          piece(new THREE.CylinderGeometry(0.15, 0.15, 4.2, 6), stone, p.x + Math.cos(a) * rr, 2.1, p.z - Math.sin(a) * rr);
+        }
+      }
+      for (const rr of p.lawnArcs) {
+        const curb = new THREE.Mesh(new THREE.RingGeometry(rr, rr + 0.8, 64, 1, p.arcFrom, p.arcLen).rotateX(-Math.PI / 2), stone);
+        curb.position.set(p.x, 0.4, p.z);
+        world.add(curb);
+      }
+    } else if (p.kind === 'substation') {
+      const metal = new THREE.MeshStandardMaterial({ color: '#9aa0a6', roughness: 0.5, metalness: 0.5 });
+      const gravel = new THREE.Mesh(new THREE.PlaneGeometry(p.w, p.d).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: '#b3a99a', roughness: 1 }));
+      gravel.position.set(p.x, 0.25, p.z);
+      world.add(gravel);
+      const r = mulberry32(31);
+      for (let i = 0; i < 8; i++) {
+        const x = p.x - p.w / 2 + 5 + r() * (p.w - 10), z = p.z - p.d / 2 + 4 + r() * (p.d - 8);
+        piece(new THREE.BoxGeometry(2.5, 2.5 + r() * 2, 2.5), metal, x, 1.6, z);
+      }
+      // gantry frames with insulator posts
+      for (let s = -p.w / 2 + 6; s < p.w / 2 - 4; s += 12) {
+        for (const sz of [-1, 1]) piece(new THREE.BoxGeometry(0.4, 10, 0.4), metal, p.x + s, 5, p.z + sz * (p.d / 2 - 4));
+        piece(new THREE.BoxGeometry(0.4, 0.4, p.d - 8), metal, p.x + s, 10, p.z);
+      }
+      piece(new THREE.BoxGeometry(8, 3.5, 6), new THREE.MeshStandardMaterial({ color: '#ecebe6' }), p.x + p.w / 2 - 6, 1.75, p.z - p.d / 2 + 5);
+      const roofG = gableRoof(8, 6, 1.2, 0.5);
+      const rf = piece(roofG, new THREE.MeshStandardMaterial({ color: '#7fbf9a', flatShading: true }), p.x + p.w / 2 - 6, 3.5, p.z - p.d / 2 + 5);
+      rf.castShadow = false;
+      const fenceMat = new THREE.MeshStandardMaterial({ color: '#8c939a', transparent: true, opacity: 0.45, side: THREE.DoubleSide, depthWrite: false });
+      for (const [w, x, z, ry] of [[p.w, 0, p.d / 2, 0], [p.w, 0, -p.d / 2, 0], [p.d, p.w / 2, 0, Math.PI / 2], [p.d, -p.w / 2, 0, Math.PI / 2]]) {
+        const f = new THREE.Mesh(new THREE.PlaneGeometry(w, 2.4), fenceMat);
+        f.position.set(p.x + x, 1.2, p.z + z);
+        f.rotation.y = ry;
+        world.add(f);
+      }
+    } else if (p.kind === 'shed') {
+      const wallMat = new THREE.MeshStandardMaterial({ color: '#d9d7d1', roughness: 0.8 });
+      const dark = new THREE.MeshStandardMaterial({ color: '#2d3034', roughness: 0.7 });
+      piece(new THREE.BoxGeometry(p.w, p.h * 0.65, p.d), p.net ? dark : wallMat, p.x, p.h * 0.325, p.z);
+      if (p.net) {
+        // open shed: black shade-net roof with one red-roofed end bay
+        piece(new THREE.BoxGeometry(p.w * 0.75, 0.2, p.d), dark, p.x + p.w * 0.125, p.h * 0.7, p.z);
+        const end = piece(gableRoof(p.w * 0.25, p.d, 2, 0.6), new THREE.MeshStandardMaterial({ color: p.roof, flatShading: true }), p.x - p.w * 0.375, p.h * 0.65, p.z);
+        end.castShadow = true;
+      } else {
+        const roofMatS = new THREE.MeshStandardMaterial({ color: p.roof, roughness: 0.6, flatShading: true });
+        piece(gableRoof(p.w, p.d, p.h * 0.35, 0.8), roofMatS, p.x, p.h * 0.65, p.z);
+        if (p.stripes) {
+          const stripe = new THREE.MeshStandardMaterial({ color: p.stripes, roughness: 0.6, flatShading: true });
+          for (const f of [-0.15, 0.05, 0.25]) piece(gableRoof(p.w * 0.07, p.d, p.h * 0.35, 0.9), stripe, p.x + f * p.w, p.h * 0.65 + 0.06, p.z);
+        }
+      }
     } else if (p.kind === 'sculpture') {
       piece(new THREE.CylinderGeometry(2.2, 2.4, 0.6, 24), white, p.x, 0.3, p.z);
       const body = piece(new THREE.SphereGeometry(1.6, 24, 16), white, p.x, 2.2, p.z);
@@ -1042,7 +1127,6 @@ function solarTexture() {
   for (let i = 0; i < 256; i += 8) { x.beginPath(); x.moveTo(i, 0); x.lineTo(i, 256); x.stroke(); }
   return toTexture(c);
 }
-const solarTex = solarTexture();
 
 // Dark wooden-shingle wall; with mural = true it also carries the SAC front: white figures,
 // the SAC sign with an inverted triangle over the door, and a teal glass box.
@@ -1453,6 +1537,38 @@ const builders = {
       add(group, m, b.id);
     }
   },
+  slabtower(group, b) {
+    // C2: grey ribbed metal-panel tower with small square windows, a full-height teal glass strip on
+    // the south face, a solar roof and a lattice antenna mast
+    const PX = 8;
+    const metal = (wm, hm) => {
+      const W = Math.round(wm * PX), H = Math.round(hm * PX);
+      const [c, x] = canvas(W, H);
+      x.fillStyle = '#c9cdd0'; x.fillRect(0, 0, W, H);
+      for (let y = 0; y < H; y += 0.5 * PX) { x.fillStyle = 'rgba(255,255,255,0.18)'; x.fillRect(0, y, W, 1); }
+      for (let y = FLOOR_H * PX * 0.35; y < H; y += FLOOR_H * PX) {
+        for (let xx = 2 * PX; xx < W - PX; xx += 4.5 * PX) { x.fillStyle = '#4a5860'; x.fillRect(xx, y, 1.4 * PX, 1.4 * PX); }
+      }
+      return nightAware(new THREE.MeshStandardMaterial({ map: toTexture(c), roughness: 0.6, metalness: 0.3 }), 'color', '#ffffff', '#7a808c');
+    };
+    const fx = metal(b.d, b.h), fz = metal(b.w, b.h);
+    const body = new THREE.Mesh(new THREE.BoxGeometry(b.w, b.h, b.d), [fx, fx, roofMat, roofMat, fz, fz]);
+    body.position.y = b.h / 2;
+    add(group, body, b.id);
+    const strip = new THREE.Mesh(new THREE.BoxGeometry(6, b.h - 2, 1.2), facadeMaterial('#4fa39a', 6, b.h - 2, true));
+    strip.position.set(-b.w / 2 + 6, (b.h - 2) / 2 + 1, -b.d / 2 - 0.4);
+    add(group, strip, b.id);
+    const lobby = new THREE.Mesh(new THREE.BoxGeometry(b.w + 1, 5, b.d + 1), facadeMaterial('#9cc0c4', b.w, 5, true));
+    lobby.position.y = 2.5;
+    add(group, lobby, b.id);
+    addSolar(group, 2, 0, b.w * 0.8, b.d * 0.75, b.h + 0.3);
+    const parapet = new THREE.Mesh(new THREE.BoxGeometry(b.w + 0.6, 1.4, b.d + 0.6), new THREE.MeshStandardMaterial({ color: '#c9ccce' }));
+    parapet.position.y = b.h + 0.7;
+    add(group, parapet, b.id);
+    const mast = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.CylinderGeometry(0.6, 1.4, 16, 3, 8)), new THREE.LineBasicMaterial({ color: '#e8e8e8' }));
+    mast.position.set(-b.w / 2 + 5, b.h + 8, b.d / 2 - 5);
+    group.add(mast);
+  },
   c6(group, b) {
     const c = b.c6, GROUND = 6;
     const white = new THREE.MeshStandardMaterial({ color: '#f1f2f2', roughness: 0.55 });
@@ -1837,6 +1953,10 @@ function blocked(x, z, pad) {
     else if (((x - w.x) / (w.rx + pad)) ** 2 + ((z - w.z) / (w.rz + pad)) ** 2 < 1) return true;
   }
   for (const p of [...PLAZAS, ...FIELDS]) if (Math.abs(x - p.x) < p.w / 2 + pad && Math.abs(z - p.z) < p.d / 2 + pad) return true;
+  for (const p of PROPS) {
+    if (p.kind === 'amphi' && Math.hypot(x - p.x, z - p.z) < Math.max(p.r + 4, ...p.lawnArcs) + pad) return true;
+    if ((p.kind === 'substation' || p.kind === 'shed' || p.kind === 'carport') && Math.abs(x - p.x) < p.w / 2 + pad && Math.abs(z - p.z) < p.d / 2 + pad) return true;
+  }
   return false;
 }
 
