@@ -3,6 +3,7 @@ import { MapControls } from 'three/addons/controls/MapControls.js';
 import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 import { ConvexGeometry } from 'three/addons/geometries/ConvexGeometry.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import {
   CAMPUS, ZONES, CATEGORIES, ROADS, PLAZAS, WATER, FIELDS, SIGNS, FLAGPOLES, PROPS, BUILDINGS, START_VIEW,
 } from './campus-data.js';
@@ -425,24 +426,93 @@ function flat(geo, mat, x, y, z, receive = true) {
 
 const roadTex = asphaltTexture(false);
 const highwayTex = asphaltTexture(true);
-const roadMats = new Map();
 const pathMat = nightAware(new THREE.MeshStandardMaterial({ color: '#e2ddd2', roughness: 0.9 }), 'color', '#e2ddd2', '#6a6f78');
-for (const r of ROADS) {
-  const len = Math.hypot(r.x2 - r.x1, r.z2 - r.z1);
-  if (r.path) {
-    const m = flat(new THREE.PlaneGeometry(len, r.w).rotateX(-Math.PI / 2), pathMat, (r.x1 + r.x2) / 2, 0.32, (r.z1 + r.z2) / 2);
-    m.rotation.y = -Math.atan2(r.z2 - r.z1, r.x2 - r.x1);
-    continue;
+// Roads are drawn as continuous ribbons: consecutive segments with the same style become one
+// polyline, every bend is rounded with an arc, and each chain end gets a round cap so junctions
+// close without notches.
+function roadChains() {
+  const chains = [];
+  for (const r of ROADS) {
+    const key = `${r.w}|${!!r.highway}|${!!r.outside}|${!!r.path}`;
+    const last = chains[chains.length - 1];
+    const end = last && last.pts[last.pts.length - 1];
+    if (last && last.key === key && Math.hypot(end[0] - r.x1, end[1] - r.z1) < 0.5) last.pts.push([r.x2, r.z2]);
+    else chains.push({ key, r, pts: [[r.x1, r.z1], [r.x2, r.z2]] });
   }
-  const base = r.highway ? highwayTex : roadTex;
-  const tex = base.clone();
-  tex.repeat.set(len / (r.highway ? 40 : 24), 1);
-  tex.needsUpdate = true;
-  const mat = nightAware(new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9 }), 'color', '#ffffff', '#5a6170');
-  roadMats.set(r, mat);
-  const g = new THREE.PlaneGeometry(len, r.w).rotateX(-Math.PI / 2);
-  const m = flat(g, mat, (r.x1 + r.x2) / 2, r.highway || r.outside ? -PLATFORM + 0.1 : 0.3, (r.z1 + r.z2) / 2);
-  m.rotation.y = -Math.atan2(r.z2 - r.z1, r.x2 - r.x1);
+  return chains;
+}
+
+function filletPolyline(pts, radius) {
+  if (pts.length < 3) return pts;
+  const out = [pts[0]];
+  for (let i = 1; i < pts.length - 1; i++) {
+    const [ax, az] = pts[i - 1], [bx, bz] = pts[i], [cx, cz] = pts[i + 1];
+    const l1 = Math.hypot(bx - ax, bz - az), l2 = Math.hypot(cx - bx, cz - bz);
+    const t = Math.min(radius, l1 / 2, l2 / 2);
+    const p0 = [bx + ((ax - bx) * t) / l1, bz + ((az - bz) * t) / l1];
+    const p2 = [bx + ((cx - bx) * t) / l2, bz + ((cz - bz) * t) / l2];
+    for (let k = 0; k <= 10; k++) {
+      const u = k / 10, a1 = (1 - u) * (1 - u), a2 = 2 * u * (1 - u), a3 = u * u;
+      out.push([a1 * p0[0] + a2 * bx + a3 * p2[0], a1 * p0[1] + a2 * bz + a3 * p2[1]]);
+    }
+  }
+  out.push(pts[pts.length - 1]);
+  return out;
+}
+
+// flat strip of the given width along a polyline; u runs along the length in units of uScale metres
+function ribbonGeometry(pts, width, uScale) {
+  const pos = [], uv = [], idx = [];
+  let dist = 0;
+  for (let i = 0; i < pts.length; i++) {
+    const [x, z] = pts[i];
+    const [px, pz] = pts[Math.max(0, i - 1)], [nx, nz] = pts[Math.min(pts.length - 1, i + 1)];
+    let dx = nx - px, dz = nz - pz;
+    const l = Math.hypot(dx, dz) || 1;
+    dx /= l; dz /= l;
+    if (i) dist += Math.hypot(x - pts[i - 1][0], z - pts[i - 1][1]);
+    const h = width / 2;
+    pos.push(x - dz * h, 0, z + dx * h, x + dz * h, 0, z - dx * h);
+    uv.push(dist / uScale, 0, dist / uScale, 1);
+    if (i) {
+      const a = (i - 1) * 2, b = a + 1, c = a + 2, d = a + 3;
+      idx.push(a, c, b, b, c, d);
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  // keep every triangle facing up
+  for (let i = 0; i < idx.length; i += 3) {
+    const [a, b, c] = [idx[i], idx[i + 1], idx[i + 2]];
+    const ux = pos[b * 3] - pos[a * 3], uz = pos[b * 3 + 2] - pos[a * 3 + 2];
+    const vx = pos[c * 3] - pos[a * 3], vz = pos[c * 3 + 2] - pos[a * 3 + 2];
+    if (uz * vx - ux * vz < 0) { idx[i + 1] = c; idx[i + 2] = b; }
+  }
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  return g;
+}
+
+const capMat = nightAware(new THREE.MeshStandardMaterial({ color: '#6c7178', roughness: 0.9 }), 'color', '#6c7178', '#5a6170');
+for (const chain of roadChains()) {
+  const r = chain.r;
+  const pts = filletPolyline(chain.pts, r.path ? 4 : r.w * 1.6);
+  const y = r.path ? 0.32 : r.highway || r.outside ? -PLATFORM + 0.1 : 0.3;
+  let mat;
+  if (r.path) {
+    mat = pathMat;
+  } else {
+    const tex = (r.highway ? highwayTex : roadTex).clone();
+    tex.repeat.set(1, 1);
+    tex.needsUpdate = true;
+    mat = nightAware(new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9 }), 'color', '#ffffff', '#5a6170');
+  }
+  flat(ribbonGeometry(pts, r.w, r.highway ? 40 : 24), mat, 0, y, 0);
+  if (r.highway) continue;
+  for (const [x, z] of [pts[0], pts[pts.length - 1]]) {
+    flat(new THREE.CircleGeometry(r.w / 2, 24).rotateX(-Math.PI / 2), r.path ? pathMat : capMat, x, y - 0.015, z);
+  }
 }
 // ทางลาดจากถนนใหญ่เข้าวิทยาเขต, ฟุตบาท และขอบทางสีแดงขาวริมถนนพหลโยธิน
 {
@@ -475,7 +545,7 @@ for (const p of PLAZAS) {
   let mat;
   if (p.kind === 'parking') {
     const t = parkTex.clone();
-    t.repeat.set(p.w / 20, p.d / 18);
+    t.repeat.set(1 / 20, 1 / 18);
     t.needsUpdate = true;
     mat = new THREE.MeshStandardMaterial({ map: t, roughness: 0.9 });
   } else if (p.kind === 'pavers') {
@@ -488,7 +558,7 @@ for (const p of PLAZAS) {
       }
     }
     const t = toTexture(pc);
-    t.repeat.set(p.w / 4, p.d / 4);
+    t.repeat.set(1 / 4, 1 / 4);
     mat = new THREE.MeshStandardMaterial({ map: t, roughness: 0.9 });
   } else if (p.kind === 'red') {
     mat = new THREE.MeshStandardMaterial({ color: '#c2452f', roughness: 0.9 });
@@ -502,7 +572,16 @@ for (const p of PLAZAS) {
     mat = new THREE.MeshStandardMaterial({ color: '#e4dccd', roughness: 0.85 });
   }
   nightAware(mat, 'color', mat.color.getStyle(), '#4a505a');
-  flat(new THREE.PlaneGeometry(p.w, p.d).rotateX(-Math.PI / 2), mat, p.x, p.kind === 'strip' ? 0.08 : 0.2, p.z);
+  // rounded corners; shape UVs are in metres, which the texture repeats above expect
+  const rad = Math.min(p.kind === 'red' ? 14 : p.kind === 'parking' ? 3 : 5, p.w / 2 - 0.1, p.d / 2 - 0.1);
+  const shape = new THREE.Shape();
+  const hw = p.w / 2, hd = p.d / 2;
+  shape.moveTo(-hw + rad, -hd);
+  shape.lineTo(hw - rad, -hd); shape.quadraticCurveTo(hw, -hd, hw, -hd + rad);
+  shape.lineTo(hw, hd - rad); shape.quadraticCurveTo(hw, hd, hw - rad, hd);
+  shape.lineTo(-hw + rad, hd); shape.quadraticCurveTo(-hw, hd, -hw, hd - rad);
+  shape.lineTo(-hw, -hd + rad); shape.quadraticCurveTo(-hw, -hd, -hw + rad, -hd);
+  flat(new THREE.ShapeGeometry(shape, 6).rotateX(-Math.PI / 2), mat, p.x, p.kind === 'strip' ? 0.08 : 0.2, p.z);
 }
 
 const waterMat = nightAware(
@@ -519,6 +598,11 @@ function grownPolygon(pts, by) {
     return [cx + ((x - cx) * (d + by)) / d, cz + ((z - cz) * (d + by)) / d];
   });
 }
+// smooth a hand-traced outline into a natural shoreline (closed centripetal Catmull-Rom)
+function smoothOutline(pts, samples = 160) {
+  const curve = new THREE.CatmullRomCurve3(pts.map(([x, z]) => new THREE.Vector3(x, 0, z)), true, 'centripetal');
+  return curve.getSpacedPoints(samples).slice(0, -1).map((v) => [v.x, v.z]);
+}
 function polygonGeometry(pts) {
   return new THREE.ShapeGeometry(new THREE.Shape(pts.map(([x, z]) => new THREE.Vector2(x, -z)))).rotateX(-Math.PI / 2);
 }
@@ -528,8 +612,9 @@ for (const w of WATER) {
     // a coloured pool is still, murky water: keep it from mirroring the sky
     const mat = w.color ? nightAware(waterMat.clone(), 'color', w.color, '#2f3a2c') : waterMat;
     if (w.color) Object.assign(mat, { roughness: 0.3, metalness: 0, envMapIntensity: 0.25 }).color.set(w.color);
-    flat(polygonGeometry(grownPolygon(w.pts, 3)), bankMat, 0, 0.18, 0);
-    flat(polygonGeometry(w.pts), mat, 0, 0.26, 0);
+    const outline = w.sharp ? w.pts : smoothOutline(w.pts);
+    flat(polygonGeometry(grownPolygon(outline, 3)), bankMat, 0, 0.18, 0);
+    flat(polygonGeometry(outline), mat, 0, 0.26, 0);
     continue;
   }
   if (w.kind === 'canal') {
@@ -2076,9 +2161,11 @@ function blocked(x, z, pad) {
     if (Math.abs(x - HW_X) > 40) spots.push([x, z, 0.8 + r() * 0.8, true]);
   }
 
-  const crownG = new THREE.IcosahedronGeometry(1, 1);
-  const trunkG = new THREE.CylinderGeometry(0.35, 0.5, 1, 6);
-  const crowns = new THREE.InstancedMesh(crownG, new THREE.MeshStandardMaterial({ roughness: 0.9, flatShading: true }), spots.length);
+  // canopy made of overlapping smooth blobs so each tree reads as a rounded, lumpy crown
+  const crownG = mergeGeometries([[0, 0, 0, 1], [0.55, -0.15, 0.25, 0.72], [-0.5, -0.1, -0.3, 0.75], [0.05, 0.32, -0.25, 0.62]]
+    .map(([x, y, z, r]) => new THREE.IcosahedronGeometry(r, 1).translate(x, y, z)));
+  const trunkG = new THREE.CylinderGeometry(0.3, 0.45, 1, 8);
+  const crowns = new THREE.InstancedMesh(crownG, new THREE.MeshStandardMaterial({ roughness: 0.9 }), spots.length);
   const trunks = new THREE.InstancedMesh(trunkG, new THREE.MeshStandardMaterial({ color: '#6b4a32' }), spots.length);
   const m = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3();
   const col = new THREE.Color();
@@ -2088,7 +2175,7 @@ function blocked(x, z, pad) {
     m.compose(p.set(x, y0 + th / 2, z), q.identity(), s.set(1, th, 1));
     trunks.setMatrixAt(i, m);
     q.setFromEuler(new THREE.Euler(0, r() * Math.PI, 0));
-    m.compose(p.set(x, y0 + th + cr * 0.6, z), q, s.set(cr, cr * (0.75 + r() * 0.3), cr));
+    m.compose(p.set(x, y0 + th + cr * 0.55, z), q, s.set(cr * 0.85, cr * (0.7 + r() * 0.25), cr * 0.85));
     crowns.setMatrixAt(i, m);
     crowns.setColorAt(i, col.setHSL(0.24 + r() * 0.08, 0.45 + r() * 0.2, 0.3 + r() * 0.12));
   });
