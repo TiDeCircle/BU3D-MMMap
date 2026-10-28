@@ -27,6 +27,7 @@
 | `tour-volleyball-court.webp` | virtual tour (virtualtour.bu.ac.th) | สนามบาสและวอลเลย์บอล พื้นสีฟ้าเขตโทษเหลือง รั้วตาข่ายเขียว |
 | `tour-court-bleachers.webp` | virtual tour (virtualtour.bu.ac.th) | อัฒจันทร์เหล็กสีเหลืองหลังคาผ้าใบโค้ง |
 | `feedback-gym-is-outdoor-courts.png` | ภาพหน้าจอโมเดลเวอร์ชันก่อนหน้า | กล่องหลังคาม่วงที่จริงเป็นสนามกลางแจ้ง |
+| `feedback-gym-wrong-orientation.png` | ภาพหน้าจอโมเดลเวอร์ชันก่อนหน้า | อาคารกีฬาเคยวางผิดทิศ ที่ถูกคือยาวแนวเหนือ–ใต้ ทางเหนือของสนามบาส |
 
 ## ภาพที่ใช้แล้วแต่ยังไม่ได้อยู่ในโฟลเดอร์นี้
 

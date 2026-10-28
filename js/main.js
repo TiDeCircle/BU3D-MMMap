@@ -670,6 +670,17 @@ function thaiFlagTexture() {
           world.add(post);
         }
       }
+      if (p.lights) {
+        // floodlight masts at the four corners
+        const mast = new THREE.MeshStandardMaterial({ color: '#9aa1a8', roughness: 0.5, metalness: 0.4 });
+        const floodMat = nightAware(new THREE.MeshStandardMaterial({ color: '#eef0f2', emissive: '#fff4d6', emissiveIntensity: 0 }), 'emissiveIntensity', 0, 2.5);
+        for (const sx of [-1, 1]) {
+          for (const sz of [-1, 1]) {
+            piece(new THREE.CylinderGeometry(0.15, 0.22, 12, 8), mast, p.x + sx * (p.w / 2 - 0.5), 6, p.z + sz * (p.d / 2 - 0.5));
+            piece(new THREE.BoxGeometry(0.6, 0.9, 1.6), floodMat, p.x + sx * (p.w / 2 - 0.9), 12, p.z + sz * (p.d / 2 - 0.5));
+          }
+        }
+      }
     } else if (p.kind === 'bleachers') {
       const yellow = new THREE.MeshStandardMaterial({ color: '#e7b21e', roughness: 0.6 });
       const wood = new THREE.MeshStandardMaterial({ color: '#7a7064', roughness: 0.9 });
@@ -681,7 +692,7 @@ function thaiFlagTexture() {
       // arched canvas roof on yellow posts
       const roof = new THREE.Mesh(
         new THREE.CylinderGeometry(3, 3, p.len, 20, 1, true, -Math.PI / 2, Math.PI).rotateX(Math.PI / 2),
-        new THREE.MeshStandardMaterial({ color: '#c9a74f', roughness: 0.9, side: THREE.DoubleSide }),
+        new THREE.MeshStandardMaterial({ color: p.roof || '#c9a74f', roughness: 0.9, side: THREE.DoubleSide }),
       );
       roof.rotation.z = Math.PI / 2;
       roof.scale.set(0.5, 1, 1);
@@ -1190,6 +1201,16 @@ const builders = {
     }
   },
   gable(group, b) {
+    if (b.ridge === 'z') {
+      // single hall whose ridge runs north–south
+      const hb = b.h * 0.55;
+      block(group, b, b.w, b.d, hb);
+      const roof = new THREE.Mesh(gableRoof(b.d, b.w, b.h - hb), new THREE.MeshStandardMaterial({ color: b.roof || '#8c96a2', roughness: 0.75, flatShading: true }));
+      roof.rotation.y = Math.PI / 2;
+      roof.position.y = hb + 0.9;
+      add(group, roof, b.id);
+      return;
+    }
     // halls: several gable roofs side by side across the depth, ridges along x
     const n = b.halls || 1;
     const hd = b.d / n;
