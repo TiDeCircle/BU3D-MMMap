@@ -334,6 +334,40 @@ function courtTexture(w, d, n) {
   return toTexture(c);
 }
 
+// Blue futsal court with an orange surround, or a blue basketball court with yellow keys
+function sportCourtTexture(kind, w, d) {
+  const PX = 16;
+  const W = Math.round(w * PX), H = Math.round(d * PX);
+  const [c, x] = canvas(W, H);
+  const m = 1.5 * PX;
+  x.fillStyle = kind === 'futsal' ? '#e2622f' : '#5f9fd0';
+  x.fillRect(0, 0, W, H);
+  x.fillStyle = kind === 'futsal' ? '#2f8fe0' : '#4d86c4';
+  x.fillRect(m, m, W - 2 * m, H - 2 * m);
+  x.strokeStyle = '#ffffff';
+  x.lineWidth = 0.12 * PX;
+  x.strokeRect(m, m, W - 2 * m, H - 2 * m);
+  x.beginPath(); x.moveTo(m, H / 2); x.lineTo(W - m, H / 2); x.stroke();
+  x.beginPath(); x.arc(W / 2, H / 2, 3 * PX, 0, Math.PI * 2); x.stroke();
+  if (kind === 'futsal') {
+    for (const s of [0, 1]) {
+      const y = s ? H - m : m;
+      x.beginPath(); x.arc(W / 2, y, 6 * PX, s ? Math.PI : 0, s ? Math.PI * 2 : Math.PI); x.stroke();
+      x.fillStyle = '#ffffff';
+      x.fillRect(W / 2 - 1.5 * PX, s ? y : y - 0.4 * PX, 3 * PX, 0.4 * PX);
+    }
+  } else {
+    for (const s of [0, 1]) {
+      const y = s ? H - m - 5.8 * PX : m;
+      x.fillStyle = '#e9b33a';
+      x.fillRect(W / 2 - 2.45 * PX, y, 4.9 * PX, 5.8 * PX);
+      x.strokeRect(W / 2 - 2.45 * PX, y, 4.9 * PX, 5.8 * PX);
+      x.beginPath(); x.arc(W / 2, s ? H - m : m, 6.75 * PX, s ? Math.PI : 0, s ? Math.PI * 2 : Math.PI); x.stroke();
+    }
+  }
+  return toTexture(c);
+}
+
 function lawnTexture() {
   const [c, x] = canvas(256, 256);
   for (let i = 0; i < 8; i++) {
@@ -487,7 +521,10 @@ for (const f of FIELDS) {
   // the track texture is drawn lying along x; a track longer in z is drawn that way and turned
   const turn = f.kind === 'track' && f.d > f.w;
   const [tw, td] = turn ? [f.d, f.w] : [f.w, f.d];
-  const tex = f.kind === 'track' ? trackTexture(tw, td) : f.kind === 'court' ? courtTexture(f.w, f.d, f.lines) : lawnTexture();
+  const tex = f.kind === 'track' ? trackTexture(tw, td)
+    : f.kind === 'court' ? courtTexture(f.w, f.d, f.lines)
+    : f.kind === 'futsal' || f.kind === 'basketball' ? sportCourtTexture(f.kind, f.w, f.d)
+    : lawnTexture();
   const mat = nightAware(new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9 }), 'color', '#ffffff', '#56606e');
   const g = new THREE.PlaneGeometry(tw, td).rotateX(-Math.PI / 2);
   if (turn) g.rotateY(Math.PI / 2);
@@ -611,6 +648,54 @@ function thaiFlagTexture() {
       for (let s = 0; s <= len; s += 6) {
         const t = s / len;
         piece(post, white, p.x1 + (p.x2 - p.x1) * t, p.h / 2, p.z1 + (p.z2 - p.z1) * t - p.w / 2 + 0.2);
+      }
+    } else if (p.kind === 'fence') {
+      // green chain-link: see-through mesh panels between green posts
+      const [fc, fx] = canvas(64, 64);
+      fx.strokeStyle = '#3f8f62'; fx.lineWidth = 3;
+      fx.beginPath(); fx.moveTo(0, 0); fx.lineTo(64, 64); fx.moveTo(64, 0); fx.lineTo(0, 64); fx.stroke();
+      const sides = [[p.w, 0, p.d / 2, 0], [p.w, 0, -p.d / 2, 0], [p.d, p.w / 2, 0, Math.PI / 2], [p.d, -p.w / 2, 0, Math.PI / 2]];
+      const postMat = new THREE.MeshStandardMaterial({ color: '#2f7a52', roughness: 0.6 });
+      for (const [len, ox, oz, ry] of sides) {
+        const t = toTexture(fc);
+        t.repeat.set(len / 1.2, p.h / 1.2);
+        const mesh = new THREE.Mesh(new THREE.PlaneGeometry(len, p.h),
+          new THREE.MeshStandardMaterial({ map: t, transparent: true, alphaTest: 0.2, side: THREE.DoubleSide }));
+        mesh.position.set(p.x + ox, p.h / 2, p.z + oz);
+        mesh.rotation.y = ry;
+        world.add(mesh);
+        for (let s = -len / 2; s <= len / 2 + 0.01; s += 4) {
+          const post = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, p.h, 6), postMat);
+          post.position.set(p.x + ox + (ry ? 0 : s), p.h / 2, p.z + oz + (ry ? s : 0));
+          world.add(post);
+        }
+      }
+    } else if (p.kind === 'bleachers') {
+      const yellow = new THREE.MeshStandardMaterial({ color: '#e7b21e', roughness: 0.6 });
+      const wood = new THREE.MeshStandardMaterial({ color: '#7a7064', roughness: 0.9 });
+      for (let i = 0; i < 4; i++) {
+        piece(new THREE.BoxGeometry(1, 0.15, p.len), wood, p.x - 1.5 + i, 0.45 + i * 0.45, p.z);
+        piece(new THREE.BoxGeometry(1, 0.45 + i * 0.45, 0.12), yellow, p.x - 1.5 + i, (0.45 + i * 0.45) / 2, p.z - p.len / 2);
+        piece(new THREE.BoxGeometry(1, 0.45 + i * 0.45, 0.12), yellow, p.x - 1.5 + i, (0.45 + i * 0.45) / 2, p.z + p.len / 2);
+      }
+      // arched canvas roof on yellow posts
+      const roof = new THREE.Mesh(
+        new THREE.CylinderGeometry(3, 3, p.len, 20, 1, true, -Math.PI / 2, Math.PI).rotateX(Math.PI / 2),
+        new THREE.MeshStandardMaterial({ color: '#c9a74f', roughness: 0.9, side: THREE.DoubleSide }),
+      );
+      roof.rotation.z = Math.PI / 2;
+      roof.scale.set(0.5, 1, 1);
+      roof.position.set(p.x, 4.2, p.z);
+      roof.castShadow = true;
+      world.add(roof);
+      for (const sz of [-1, 0, 1]) {
+        for (const sx of [-1, 1]) piece(new THREE.CylinderGeometry(0.08, 0.08, 4.2, 6), yellow, p.x + sx * 2.6, 2.1, p.z + sz * (p.len / 2 - 0.3));
+      }
+    } else if (p.kind === 'umbrellas') {
+      const cloth = new THREE.MeshStandardMaterial({ color: '#f4f4f2', roughness: 0.8, side: THREE.DoubleSide });
+      for (let z = p.z1; z <= p.z2 + 0.01; z += p.step) {
+        piece(new THREE.ConeGeometry(2.2, 1.2, 8, 1, true), cloth, p.x, 3.6, z);
+        piece(new THREE.CylinderGeometry(0.06, 0.06, 3.4, 6), white, p.x, 1.7, z);
       }
     } else if (p.kind === 'carport') {
       piece(new THREE.BoxGeometry(p.w, 0.3, p.d), white, p.x, p.h, p.z);
@@ -1865,7 +1950,7 @@ function drawMiniStatic() {
     else if (w.kind !== 'island') x.ellipse(w.x, w.z, w.rx, w.rz, 0, 0, Math.PI * 2);
     x.fill();
   }
-  for (const f of FIELDS) { x.fillStyle = f.kind === 'track' ? '#c4603f' : '#3f8a5a'; x.fillRect(f.x - f.w / 2, f.z - f.d / 2, f.w, f.d); }
+  for (const f of FIELDS) { x.fillStyle = f.kind === 'track' ? '#c4603f' : f.kind === 'futsal' || f.kind === 'basketball' ? '#2f8fe0' : '#3f8a5a'; x.fillRect(f.x - f.w / 2, f.z - f.d / 2, f.w, f.d); }
   for (const b of BUILDINGS) {
     if (b.shape === 'none') continue;
     x.fillStyle = CATEGORIES[b.category].color;
