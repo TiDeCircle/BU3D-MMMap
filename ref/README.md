@@ -39,6 +39,11 @@
 | `tour-bus-stop-hoarding.webp` | virtual tour (virtualtour.bu.ac.th) | ศาลาพักรถเมล์ รั้วตาข่ายเทา รั้วเหลือง NEW CAFETERIA IS COMING SOON |
 | `tour-bus-stop-road.webp` | virtual tour (virtualtour.bu.ac.th) มองตามถนนสายกลาง | ศาลาพักรถเมล์ ตัวอักษร BUS STOP เลนจักรยาน |
 | `feedback-closed-site-opposite-b4.png` | ภาพหน้าจอโมเดล กรอบเหลือง | พื้นที่ตรงข้าม B4 ที่ล้อมรั้วก่อสร้าง |
+| `satellite-c6-bui.webp` | Google Maps ดาวเทียมมุมบน ทิศเหนือขึ้น (ราว 0.3 ม./พิกเซล) | **ใช้วางอาคาร C6** หลังคาโซลาร์ กลองทรงกลม หอศิลป์ BUG พิพิธภัณฑ์ ถนนวงรอบ ลานจอด 5 |
+| `drone-c6.webp` | virtual tour ภาพโดรนมองไปทางทิศตะวันออก | มวลอาคาร C6 กลองทรงกลมพร้อมโครงตาข่าย |
+| `streetview-c6-library-entrance.webp` | Google Street View (ก.พ. 2022) | ทางเข้าหอสมุดด้านใต้ หลังคายื่นบนเสาเรียว ครีบบังแดด วงเลี้ยวรับส่ง |
+| `streetview-bui-east.webp` | Google Street View (ก.พ. 2022) | ทางเข้า BUI ด้านตะวันออก ผนังโค้ง ป้าย BUI สระน้ำตื้น |
+| `streetview-c-zone-road.webp` | Google Street View (ก.พ. 2022) | ถนนเข้าโซน C ป้ายโซน C |
 
 ## ภาพที่ใช้แล้วแต่ยังไม่ได้อยู่ในโฟลเดอร์นี้
 

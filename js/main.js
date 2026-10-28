@@ -1120,6 +1120,43 @@ function brickTexture(wm, hm) {
   return toTexture(c);
 }
 
+// C6 facade: light grey precast bands between dark ribbon windows crossed by white sun-shade fins
+function ribbonTextures(wm, hm, seed) {
+  const PX = 8;
+  const W = Math.min(2048, Math.round(wm * PX)), H = Math.round(hm * PX);
+  const [dc, d] = canvas(W, H);
+  const [lc, l] = canvas(W, H);
+  const r = mulberry32(seed);
+  d.fillStyle = '#d6d8d9'; d.fillRect(0, 0, W, H);
+  l.fillStyle = '#000'; l.fillRect(0, 0, W, H);
+  const floor = FLOOR_H * PX, rib = 2.1 * PX;
+  for (let y = 0.6 * PX; y < H - rib; y += floor) {
+    d.fillStyle = '#4b5b63'; d.fillRect(0, y, W, rib);
+    for (let x = 0; x < W; x += 1.5 * PX) {
+      d.fillStyle = 'rgba(30,38,44,0.8)'; d.fillRect(x, y, 2, rib);
+      if (r() < 0.5) { l.fillStyle = r() < 0.8 ? '#ffd48a' : '#d4e9ff'; l.fillRect(x + 2, y, 1.5 * PX - 2, rib); }
+    }
+    d.fillStyle = '#f4f5f5';
+    for (const k of [0.3, 0.62]) d.fillRect(0, y + rib * k, W, 0.18 * PX);
+  }
+  d.fillStyle = 'rgba(0,0,0,0.06)';
+  for (let x = 0; x < W; x += 9 * PX) d.fillRect(x, 0, 2, H);
+  return { map: toTexture(dc), lit: toTexture(lc) };
+}
+
+function ribbonBlock(group, b, x, z, w, d, y0, h) {
+  const face = (t) => nightAware(new THREE.MeshStandardMaterial({
+    map: t.map, emissive: '#ffffff', emissiveMap: t.lit, emissiveIntensity: 0, roughness: 0.75,
+  }), 'emissiveIntensity', 0, 0.85);
+  const fx = face(ribbonTextures(d, h, 51)), fz = face(ribbonTextures(w, h, 52));
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), [fx, fx, roofMat, roofMat, fz, fz]);
+  m.position.set(x, y0 + h / 2, z);
+  add(group, m, b.id);
+  const parapet = new THREE.Mesh(new THREE.BoxGeometry(w + 0.6, 1.2, d + 0.6), new THREE.MeshStandardMaterial({ color: '#e4e5e5', roughness: 0.7 }));
+  parapet.position.set(x, y0 + h + 0.6, z);
+  add(group, parapet, b.id);
+}
+
 function shingleBlock(group, b, x, z, w, d, h) {
   const mat = (wm, mural) => nightAware(new THREE.MeshStandardMaterial({ map: shingleTexture(wm, h, mural), roughness: 0.95 }), 'color', '#ffffff', '#7a808c');
   const side = mat(d, false), back = mat(w, false), front = mat(w, true);
@@ -1415,6 +1452,115 @@ const builders = {
       m.position.set(0, hb + 0.9, oz);
       add(group, m, b.id);
     }
+  },
+  c6(group, b) {
+    const c = b.c6, GROUND = 6;
+    const white = new THREE.MeshStandardMaterial({ color: '#f1f2f2', roughness: 0.55 });
+    const glassBase = { ...b, color: '#9cc0c4', glass: true };
+    // main library block and the lower west wing, each on a recessed glass ground floor
+    for (const [part, top] of [[c.main, b.h], [c.wing, c.wingH]]) {
+      const [x, z, w, d] = part;
+      block(group, glassBase, w - 3, d - 3, GROUND, 0, x, z);
+      ribbonBlock(group, b, x, z, w, d, GROUND, top - GROUND);
+    }
+    // gallery: upper floors over the whole north block, glass only on its south part so the road passes under
+    {
+      const [x, z, w, d] = c.gallery;
+      ribbonBlock(group, b, x, z, w, d, GROUND, b.h - GROUND);
+      const [gx, gz, gw, gd] = c.galleryGround;
+      block(group, glassBase, gw - 3, gd - 2, GROUND, 0, gx, gz);
+      const col = new THREE.BoxGeometry(1, GROUND, 1);
+      for (let s = -w / 2 + 1; s <= w / 2 - 1; s += 8) {
+        for (const zz of [z + d / 2 - 0.8, gz + gd / 2 + 0.5]) {
+          const m = new THREE.Mesh(col, white);
+          m.position.set(x + s, GROUND / 2, zz);
+          add(group, m, b.id);
+        }
+      }
+    }
+    // roof: solar field, plant units, and the round drum with its lattice dome
+    {
+      const [sx, sz, sw, sd] = c.solar;
+      addSolar(group, sx, sz, sw / 0.8, sd / 0.85, b.h + 0.35);
+      const [ux, uz, uw, ud] = c.units;
+      for (let i = 0; i < 3; i++) {
+        for (let j = 0; j < 2; j++) {
+          const u = new THREE.Mesh(new THREE.BoxGeometry(uw / 3 - 1.5, 2.6, ud / 2 - 1.5), unitMat);
+          u.position.set(ux - uw / 2 + (i + 0.5) * uw / 3, b.h + 1.3, uz - ud / 2 + (j + 0.5) * ud / 2);
+          add(group, u, b.id);
+        }
+      }
+      const [dx, dz, r] = c.drum;
+      const drum = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 3.5, 48), white);
+      drum.position.set(dx, b.h + 1.75, dz);
+      add(group, drum, b.id);
+      const cap = new THREE.Mesh(new THREE.SphereGeometry(r, 48, 8, 0, Math.PI * 2, 0, 0.32), new THREE.MeshStandardMaterial({ color: '#cfd0cc', roughness: 0.8 }));
+      cap.position.set(dx, b.h + 3.5 - r * Math.cos(0.32), dz);
+      add(group, cap, b.id);
+      const lattice = new THREE.LineSegments(
+        new THREE.EdgesGeometry(new THREE.SphereGeometry(r + 5, 20, 6, 0, Math.PI * 2, 0, Math.PI * 0.4), 1),
+        new THREE.LineBasicMaterial({ color: '#f4f4f2' }),
+      );
+      lattice.position.set(dx, b.h + 0.5 - (r + 5) * Math.cos(Math.PI * 0.4), dz);
+      group.add(lattice);
+    }
+    // library entrance on the south: steps, a deep flat canopy with a frosted fascia on slender columns
+    {
+      const [x, z, w, d] = c.steps;
+      const steps = new THREE.Mesh(new THREE.BoxGeometry(w, 0.8, d), new THREE.MeshStandardMaterial({ color: '#d2d0ca', roughness: 0.9 }));
+      steps.position.set(x, 0.4, z);
+      add(group, steps, b.id);
+      const [cx, cz, cw, cd, cy] = c.canopy;
+      const slab = new THREE.Mesh(new THREE.BoxGeometry(cw, 1.2, cd), new THREE.MeshStandardMaterial({ color: '#e9eef0', roughness: 0.35, metalness: 0.2 }));
+      slab.position.set(cx, cy, cz);
+      add(group, slab, b.id);
+      const col = new THREE.CylinderGeometry(0.3, 0.3, cy - 0.6, 10);
+      for (let s = -cw / 2 + 2; s <= cw / 2 - 2; s += 6) {
+        const m = new THREE.Mesh(col, white);
+        m.position.set(cx + s, (cy - 0.6) / 2, cz - cd / 2 + 1);
+        add(group, m, b.id);
+      }
+    }
+    // BUI entrance on the east: a curved beige wall, the BUI sign and a shallow pool along the facade
+    {
+      const ex = c.main[0] - c.main[2] / 2;
+      const wall = new THREE.Mesh(new THREE.CylinderGeometry(6, 6, GROUND + 1, 24, 1, false, Math.PI, Math.PI),
+        new THREE.MeshStandardMaterial({ color: '#cdb3a5', roughness: 0.8, side: THREE.DoubleSide }));
+      wall.position.set(ex, (GROUND + 1) / 2, -16);
+      add(group, wall, b.id);
+      const [sc, sx] = canvas(256, 96);
+      sx.fillStyle = '#f2f2f0'; sx.fillRect(0, 0, 256, 96);
+      sx.fillStyle = '#222'; sx.font = '700 54px "Chakra Petch", sans-serif'; sx.fillText('BUI', 24, 66);
+      const sign = new THREE.Mesh(new THREE.BoxGeometry(0.4, 1.3, 3.4), [0, 1, 2, 3, 4, 5].map((i) =>
+        new THREE.MeshStandardMaterial({ color: '#f2f2f0', map: i === 1 ? toTexture(sc) : null })));
+      sign.position.set(ex - 3, 0.65, -4);
+      add(group, sign, b.id);
+      const pool = new THREE.Mesh(new THREE.PlaneGeometry(4, 34).rotateX(-Math.PI / 2), waterMat);
+      pool.position.set(ex - 3.5, 0.5, -30);
+      group.add(pool);
+      const rim = new THREE.Mesh(new THREE.BoxGeometry(5, 0.5, 35), new THREE.MeshStandardMaterial({ color: '#d8d6d0', roughness: 0.9 }));
+      rim.position.set(ex - 3.5, 0.2, -30);
+      add(group, rim, b.id);
+    }
+  },
+  terrace(group, b) {
+    // museum with a stepped green roof rising toward C6 (+x); glass bands on the stepped east faces
+    const grass = nightAware(new THREE.MeshStandardMaterial({ color: '#7fb85d', roughness: 0.95 }), 'color', '#7fb85d', '#4e7356');
+    const glass = new THREE.MeshStandardMaterial({ color: '#3e5a62', roughness: 0.15, metalness: 0.4, envMap: envTex });
+    const side = new THREE.MeshStandardMaterial({ color: b.color, roughness: 0.8 });
+    for (const [f, h] of [[1, 1.4], [0.66, 3], [0.34, b.h]]) {
+      const w = b.w * f, x = b.w / 2 - w / 2;
+      const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, b.d), [side, side, grass, side, side, side]);
+      m.position.set(x, h / 2, 0);
+      add(group, m, b.id);
+      const band = new THREE.Mesh(new THREE.PlaneGeometry(b.d - 2, Math.min(1.2, h - 0.3)), glass);
+      band.rotation.y = -Math.PI / 2;
+      band.position.set(x - w / 2 - 0.02, h - 0.8, 0);
+      group.add(band);
+    }
+    const sky = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.6, 2.2), new THREE.MeshStandardMaterial({ color: '#f2f2f0' }));
+    sky.position.set(-b.w * 0.12, 2.2, b.d * 0.2);
+    add(group, sky, b.id);
   },
   brickbase(group, b) {
     // B4: two brick storeys under three white storeys with balconies, a flared concrete hood on
